@@ -2,8 +2,6 @@ module github.com/grafana/grafana-mysql-datasource
 
 go 1.25.7
 
-replace github.com/grafana/grafana-mysql-datasource => /Users/njv/Code/wave/tern/grafana-mysql-datasource
-
 require (
 	github.com/VividCortex/mysqlerr v1.0.0
 	github.com/go-sql-driver/mysql v1.9.3
