@@ -13,11 +13,27 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
+
+// testQueryHandler is a thin test wrapper that replicates the old Service
+// forwarding pattern: look up the DataSourceHandler from the InstanceManager
+// and delegate QueryData to it.
+type testQueryHandler struct {
+	im instancemgmt.InstanceManager
+}
+
+func (h *testQueryHandler) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+	i, err := h.im.Get(ctx, req.PluginContext)
+	if err != nil {
+		return nil, err
+	}
+	return i.(*sqleng.DataSourceHandler).QueryData(ctx, req)
+}
 
 // To run this test, set runMySqlTests=true
 // Or from the commandline: GRAFANA_TEST_DB=mysql go test -v ./pkg/tsdb/mysql
@@ -85,10 +101,8 @@ func TestIntegrationMySQL(t *testing.T) {
 
 	ctx := backend.WithGrafanaConfig(context.Background(), cfg)
 
-	exe := &Service{
-		im:     datasource.NewInstanceManager(NewInstanceSettings(logger)),
-		logger: logger,
-	}
+	im := datasource.NewInstanceManager(NewInstanceSettings(logger))
+	exe := &testQueryHandler{im: im}
 
 	db := InitMySQLTestDB(t, jsonData)
 
