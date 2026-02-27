@@ -2,7 +2,7 @@
   "type": "datasource",
   "name": "MySQL",
   "id": "mysql",
-  "executable": "gpx_mysql",
+  "executable": "gpx_grafana-mysql-datasource",
   "category": "sql",
 
   "info": {
@@ -17,7 +17,7 @@
     },
     "version": "%VERSION%",
     "links": [
-      { "name": "Raise issue", "url": "https://github.com/grafana/grafana/issues/new" },
+      { "name": "Raise issue", "url": "https://github.com/grafana/grafana-mysql-datasource/issues/new" },
       { "name": "Documentation", "url": "https://grafana.com/docs/grafana/latest/datasources/mysql/" }
     ]
   },
