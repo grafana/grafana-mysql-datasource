@@ -14,7 +14,22 @@ import (
 const rsIdentifier = `([_a-zA-Z0-9]+)`
 const sExpr = `\$` + rsIdentifier + `\(([^\)]*)\)`
 
-var restrictedRegExp = regexp.MustCompile(`(?im)([\s]*show[\s]+grants|[\s,]session_user\([^\)]*\)|[\s,]current_user(\([^\)]*\))?|[\s,]system_user\([^\)]*\)|[\s,]user\([^\)]*\))([\s,;]|$)`)
+var (
+	restrictedRegExp = regexp.MustCompile(`(?im)([\s]*show[\s]+grants|[\s,]session_user\([^\)]*\)|[\s,]current_user(\([^\)]*\))?|[\s,]system_user\([^\)]*\)|[\s,]user\([^\)]*\))([\s,;]|$)`)
+	reBlockComment   = regexp.MustCompile(`(?s)/\*.*?\*/`)
+	reLineComment    = regexp.MustCompile(`--[^\n]*`)
+	reHashComment    = regexp.MustCompile(`#[^\n]*`)
+)
+
+// stripSQLComments removes SQL line comments (--, #) and block comments (/* */)
+// from the query string. MySQL supports # as a line comment delimiter in
+// addition to the standard -- and /* */ forms.
+func stripSQLComments(sql string) string {
+	sql = reBlockComment.ReplaceAllString(sql, "")
+	sql = reLineComment.ReplaceAllString(sql, "")
+	sql = reHashComment.ReplaceAllString(sql, "")
+	return sql
+}
 
 // stripSQLComments removes SQL line comments (--, #) and block comments (/* */)
 // from the query string while preserving comment-like characters that appear
