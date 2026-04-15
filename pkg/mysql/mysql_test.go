@@ -36,7 +36,7 @@ func (h *testQueryHandler) QueryData(ctx context.Context, req *backend.QueryData
 }
 
 // To run this test, set runMySqlTests=true
-// Or from the commandline: GRAFANA_TEST_DB=mysql go test -v ./pkg/tsdb/mysql
+// Or from the commandline: GRAFANA_TEST_DB=mysql go test -v ./pkg/mysql
 // The tests require a MySQL db named grafana_ds_tests and a user/password grafana/password
 // Use the docker/blocks/mysql_tests/docker-compose.yaml to spin up a
 // preconfigured MySQL server suitable for running these tests.
