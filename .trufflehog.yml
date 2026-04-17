@@ -1,0 +1,7 @@
+# Trufflehog configuration.
+#
+# Fixture SQL files contain synthetic values that may pattern-match secret
+# detectors (numeric IDs, hostnames, etc.). These files hold no real
+# credentials.
+exclude_paths:
+  - tests/e2e/fixtures/
