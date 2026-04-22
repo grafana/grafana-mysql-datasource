@@ -17,7 +17,7 @@
   "author": "Grafana",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "@grafana/e2e-selectors": "^12.3.2",
+    "@grafana/e2e-selectors": "^12.4.0",
     "@grafana/eslint-config": "^9.0.0",
     "@grafana/plugin-e2e": "^3.4.0",
     "@grafana/tsconfig": "^2.0.1",
@@ -80,7 +80,7 @@
     "@grafana/plugin-ui": "^0.13.1",
     "@grafana/runtime": "^12.3.2",
     "@grafana/schema": "^12.3.2",
-    "@grafana/sql": "13.0.0",
+    "@grafana/sql": "13.0.1",
     "@grafana/ui": "^12.3.2",
     "@react-awesome-query-builder/ui": "^6.6.15",
     "immutable": "^5.1.4",
