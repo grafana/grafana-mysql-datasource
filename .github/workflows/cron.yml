@@ -1,0 +1,20 @@
+name: Scheduled Cloud end-to-end tests
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  playwright-cloud:
+    uses: grafana/data-sources-ci-workflows/.github/workflows/playwright-cloud.yml@main
+    secrets: inherit
+    with:
+      # TODO: Replace the Vault paths below with the real values for this
+      # data source. Open the provisioned MySQL instance at
+      # https://datasources.grafana.net/ and copy each field's vault path.
+      repo-secrets: |
+        DS_INSTANCE_HOST=mysql/instance:host
+        DS_INSTANCE_PASSWORD=mysql/instance:password
+        DS_INSTANCE_PORT=mysql/instance:port
+        DS_INSTANCE_USERNAME=mysql/instance:username
