@@ -18,11 +18,12 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	sdkhttpclient "github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/config"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 const (
@@ -37,7 +38,7 @@ func characterEscape(s string, escapeChar string) string {
 
 func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 	return func(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-		cfg := backend.GrafanaConfigFromContext(ctx)
+		cfg := config.GrafanaConfigFromContext(ctx)
 		sqlCfg, err := cfg.SQL()
 		if err != nil {
 			return nil, err
@@ -131,7 +132,7 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 			cnnstr += fmt.Sprintf("&time_zone='%s'", url.QueryEscape(dsInfo.JsonData.Timezone))
 		}
 
-		config := sqleng.DataPluginConfiguration{
+		dpConfig := sqleng.DataPluginConfiguration{
 			DSInfo:            dsInfo,
 			TimeColumnNames:   []string{"time", "time_sec"},
 			MetricColumnTypes: []string{"CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT"},
@@ -152,11 +153,11 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 			return nil, err
 		}
 
-		db.SetMaxOpenConns(config.DSInfo.JsonData.MaxOpenConns)
-		db.SetMaxIdleConns(config.DSInfo.JsonData.MaxIdleConns)
-		db.SetConnMaxLifetime(time.Duration(config.DSInfo.JsonData.ConnMaxLifetime) * time.Second)
+		db.SetMaxOpenConns(dpConfig.DSInfo.JsonData.MaxOpenConns)
+		db.SetMaxIdleConns(dpConfig.DSInfo.JsonData.MaxIdleConns)
+		db.SetConnMaxLifetime(time.Duration(dpConfig.DSInfo.JsonData.ConnMaxLifetime) * time.Second)
 
-		return sqleng.NewQueryDataHandler(userFacingDefaultError, db, config, &rowTransformer, newMysqlMacroEngine(logger, userFacingDefaultError), logger)
+		return sqleng.NewQueryDataHandler(userFacingDefaultError, db, dpConfig, &rowTransformer, newMysqlMacroEngine(logger, userFacingDefaultError), logger)
 	}
 }
 
@@ -170,7 +171,7 @@ func (t *mysqlQueryResultTransformer) TransformQueryError(logger log.Logger, err
 		if driverErr.Number != mysqlerr.ER_PARSE_ERROR && driverErr.Number != mysqlerr.ER_BAD_FIELD_ERROR &&
 			driverErr.Number != mysqlerr.ER_NO_SUCH_TABLE {
 			logger.Error("Query error", "error", err)
-			return fmt.Errorf(("query failed - %s"), t.userError)
+			return fmt.Errorf("query failed - %s", t.userError)
 		}
 	}
 

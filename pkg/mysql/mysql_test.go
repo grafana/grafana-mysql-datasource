@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/config"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
 
@@ -91,7 +92,7 @@ func TestIntegrationMySQL(t *testing.T) {
 		},
 	}
 
-	cfg := backend.NewGrafanaCfg(map[string]string{
+	cfg := config.NewGrafanaCfg(map[string]string{
 		backend.SQLMaxOpenConnsDefault:           "0",
 		backend.SQLMaxIdleConnsDefault:           "2",
 		backend.SQLMaxConnLifetimeSecondsDefault: "14400",
@@ -99,7 +100,7 @@ func TestIntegrationMySQL(t *testing.T) {
 		backend.UserFacingDefaultError:           "",
 	})
 
-	ctx := backend.WithGrafanaConfig(context.Background(), cfg)
+	ctx := config.WithGrafanaConfig(context.Background(), cfg)
 
 	im := datasource.NewInstanceManager(NewInstanceSettings(logger))
 	exe := &testQueryHandler{im: im}
