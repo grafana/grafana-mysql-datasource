@@ -2,7 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: 'mysql'
-    uid: 'mysql-test'
+    uid: 'mysql-ds-m' # match provisioned datasource in datasourcese2e instance
     type: 'mysql'
     access: proxy
     isDefault: true
