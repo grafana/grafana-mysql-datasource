@@ -10,10 +10,8 @@ jobs:
     uses: grafana/data-sources-ci-workflows/.github/workflows/playwright-cloud.yml@main
     secrets: inherit
     with:
-      # TODO: Replace the Vault paths below with the real values for this
-      # data source. Open the provisioned MySQL instance at
-      # https://datasources.grafana.net/ and copy each field's vault path.
       repo-secrets: |
         DS_INSTANCE_URL=mysql:url
         DS_INSTANCE_PASSWORD=mysql:secure_password
         DS_INSTANCE_USERNAME=mysql:user
+        DS_INSTANCE_DATABASE=mysql:json_database

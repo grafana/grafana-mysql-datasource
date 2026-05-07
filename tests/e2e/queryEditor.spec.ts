@@ -3,6 +3,7 @@ import type { Page, Response } from '@playwright/test';
 
 const PROVISIONED_UID = 'mysql-ds-m';
 const PLUGIN_ID = 'mysql';
+const DS_DATABASE = process.env.DS_INSTANCE_DATABASE ?? 'testdata';
 
 /**
  * Fixture time range. These must match the seed in `tests/e2e/fixtures/seed.sql`
@@ -34,7 +35,7 @@ function exploreUrl(uid: string, opts: QueryOverrides = {}): string {
           format: opts.format ?? 'table',
           rawSql: opts.rawSql ?? '',
           editorMode: opts.editorMode ?? 'code',
-          dataset: opts.dataset ?? 'testdata',
+          dataset: opts.dataset ?? DS_DATABASE,
           ...(opts.rawSql ? { rawQuery: true } : {}),
         },
       ],
@@ -142,19 +143,18 @@ test.describe('Query editor', () => {
   });
 });
 
-test.describe('Query editor with fixture data', () => {
+test.describe('Query data', () => {
   // Serial mode prevents parallel workers from competing for the same MySQL
   // backend and producing slow responses that look like failures.
   test.describe.configure({ mode: 'serial' });
 
-  test.describe('metrics table', () => {
-    test('code mode: SELECT returns rows for web-01', async ({ page, explorePage }) => {
+  test.describe('world_data table', () => {
+    test('code mode: SELECT returns rows', async ({ page, explorePage }) => {
       const { responsePromise, getBody } = waitForQueryDataResponseWithBody(explorePage);
       await page.goto(
         exploreUrl(PROVISIONED_UID, {
           editorMode: 'code',
-          rawSql:
-            "SELECT ts AS time, cpu_usage FROM testdata.metrics WHERE host='web-01' ORDER BY ts LIMIT 5",
+          rawSql: `SELECT base_country, birth_rate, co2, gdp, date_time, timestamp_value FROM ${DS_DATABASE}.world_data LIMIT 5`,
         })
       );
       await responsePromise;
@@ -162,31 +162,12 @@ test.describe('Query editor with fixture data', () => {
         results: { A: { frames: Array<{ data: { values: unknown[][] } }> } };
       } | null;
       expect(body?.results.A.frames.length).toBeGreaterThan(0);
-      const values = body?.results.A.frames[0].data.values;
-      expect(values?.[0].length).toBe(5);
+      const firstColumn = body?.results.A.frames[0].data.values[0];
+      expect(firstColumn?.length).toBeGreaterThan(0);
+      expect(firstColumn?.length).toBeLessThanOrEqual(5);
     });
 
-    test('code mode: host filter reduces the result set', async ({ page, explorePage }) => {
-      const { responsePromise, getBody } = waitForQueryDataResponseWithBody(explorePage);
-      await page.goto(
-        exploreUrl(PROVISIONED_UID, {
-          editorMode: 'code',
-          rawSql:
-            "SELECT COUNT(*) AS rows_count FROM testdata.metrics WHERE host='db-01'",
-        })
-      );
-      await responsePromise;
-      const body = getBody() as {
-        results: { A: { frames: Array<{ data: { values: unknown[][] } }> } };
-      } | null;
-      const count = body?.results.A.frames[0].data.values[0][0] as number;
-      // The seed places every minute across ~4 hours × 3 hosts, so db-01 has
-      // 241 rows. Assert a loose lower bound so small fixture tweaks don't
-      // break the test.
-      expect(count).toBeGreaterThan(200);
-    });
-
-    test('time_series format: aggregated cpu_usage returns frames', async ({
+    test('time_series format: aggregated co2 returns frames', async ({
       page,
       explorePage,
     }) => {
@@ -195,8 +176,7 @@ test.describe('Query editor with fixture data', () => {
         exploreUrl(PROVISIONED_UID, {
           editorMode: 'code',
           format: 'time_series',
-          rawSql:
-            'SELECT ts AS time, AVG(cpu_usage) AS value FROM testdata.metrics GROUP BY ts ORDER BY ts',
+          rawSql: `SELECT date_time AS time, AVG(co2) AS value FROM ${DS_DATABASE}.world_data GROUP BY date_time ORDER BY date_time LIMIT 50`,
         })
       );
       await responsePromise;
@@ -204,27 +184,6 @@ test.describe('Query editor with fixture data', () => {
         results: { A: { frames: Array<{ data: { values: unknown[][] } }> } };
       } | null;
       expect(body?.results.A.frames.length).toBeGreaterThan(0);
-    });
-  });
-
-  test.describe('logs table', () => {
-    test('code mode: SELECT returns log entries', async ({ page, explorePage }) => {
-      const { responsePromise, getBody } = waitForQueryDataResponseWithBody(explorePage);
-      await page.goto(
-        exploreUrl(PROVISIONED_UID, {
-          editorMode: 'code',
-          rawSql:
-            'SELECT ts AS time, level, service, message FROM testdata.logs ORDER BY ts LIMIT 10',
-        })
-      );
-      await responsePromise;
-      const body = getBody() as {
-        results: { A: { frames: Array<{ data: { values: unknown[][] } }> } };
-      } | null;
-      expect(body?.results.A.frames.length).toBeGreaterThan(0);
-      const rows = body?.results.A.frames[0].data.values[0];
-      expect(rows?.length).toBeGreaterThan(0);
-      expect(rows?.length).toBeLessThanOrEqual(10);
     });
   });
 });

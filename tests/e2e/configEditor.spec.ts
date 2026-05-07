@@ -16,7 +16,7 @@ const PROVISIONED_FILE = 'datasources.yml';
 const [DS_HOST, DS_PORT] = (process.env.DS_INSTANCE_URL ?? 'mysql:3306').split(':');
 const DS_USER = process.env.DS_INSTANCE_USERNAME ?? 'grafana';
 const DS_PASSWORD = process.env.DS_INSTANCE_PASSWORD ?? 'grafana';
-const DS_DATABASE = 'testdata';
+const DS_DATABASE = process.env.DS_INSTANCE_DATABASE ?? 'testdata';
 
 test.describe('Config editor', () => {
   test.describe('rendering', () => {

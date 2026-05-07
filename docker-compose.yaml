@@ -42,3 +42,5 @@ services:
         condition: service_healthy
       mysql-loader:
         condition: service_completed_successfully
+    environment:
+      GF_FEATURE_TOGGLES_splashScreen: "false"
