@@ -10,14 +10,13 @@ const PROVISIONED_FILE = 'datasources.yml';
  * Locally, the MySQL service runs under its Docker Compose service name
  * (`mysql`) and is reachable from inside the Grafana container at
  * `mysql:3306`. In Cloud end-to-end runs, the provisioned instance's
- * connection details are injected via `DS_INSTANCE_*` environment variables
- * by Grafana Bench.
+ * connection details are injected via `DS_INSTANCE_URL` (and other
+ * `DS_INSTANCE_*` variables) by Grafana Bench.
  */
-const DS_HOST = process.env.DS_INSTANCE_HOST ?? 'mysql';
-const DS_PORT = process.env.DS_INSTANCE_PORT ?? '3306';
+const [DS_HOST, DS_PORT] = (process.env.DS_INSTANCE_URL ?? 'mysql:3306').split(':');
 const DS_USER = process.env.DS_INSTANCE_USERNAME ?? 'grafana';
 const DS_PASSWORD = process.env.DS_INSTANCE_PASSWORD ?? 'grafana';
-const DS_DATABASE = 'testdata';
+const DS_DATABASE = process.env.DS_INSTANCE_DATABASE ?? 'testdata';
 
 test.describe('Config editor', () => {
   test.describe('rendering', () => {
