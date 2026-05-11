@@ -11,7 +11,7 @@ import (
 
 func main() {
 	logger := backend.NewLoggerWith("logger", "tsdb.mysql")
-	if err := datasource.Manage("grafana-mysql-datasource", mysql.NewInstanceSettings(logger), datasource.ManageOpts{}); err != nil {
+	if err := datasource.Manage("mysql", mysql.NewInstanceSettings(logger), datasource.ManageOpts{}); err != nil {
 		log.DefaultLogger.Error(err.Error())
 		os.Exit(1)
 	}
