@@ -21,6 +21,7 @@
       "large": "img/mysql_logo.svg"
     },
     "version": "%VERSION%",
+    "updated": "%TODAY%",
     "links": [
       { "name": "Raise issue", "url": "https://github.com/grafana/grafana-mysql-datasource/issues/new" },
       { "name": "Documentation", "url": "https://grafana.com/docs/grafana/latest/datasources/mysql/" }
