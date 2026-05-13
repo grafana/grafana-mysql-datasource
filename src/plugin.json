@@ -7,6 +7,11 @@
 
   "info": {
     "description": "Data source for MySQL databases",
+    "keywords": [
+        "mysql",
+        "database",
+        "sql"
+    ],
     "author": {
       "name": "Grafana Labs",
       "url": "https://grafana.com"
