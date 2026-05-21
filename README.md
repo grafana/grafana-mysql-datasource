@@ -40,3 +40,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 This plugin is licensed under the [AGPL-3.0](LICENSE).
+
+## Testing
+Does this work?
