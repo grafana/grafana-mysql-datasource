@@ -4,14 +4,14 @@ go 1.26.3
 
 require (
 	github.com/VividCortex/mysqlerr v1.0.0
-	github.com/go-sql-driver/mysql v1.9.3
+	github.com/go-sql-driver/mysql v1.10.0
 	github.com/grafana/grafana-plugin-sdk-go v0.291.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.55.0
 )
 
 require (
-	filippo.io/edwards25519 v1.1.1 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/apache/arrow-go/v18 v18.5.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
