@@ -17,7 +17,7 @@
   "author": "Grafana",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "@grafana/e2e-selectors": "^12.4.0",
+    "@grafana/e2e-selectors": "^12.4.2",
     "@grafana/eslint-config": "^9.0.0",
     "@grafana/plugin-e2e": "3.8.0",
     "@grafana/tsconfig": "^2.1.0",
