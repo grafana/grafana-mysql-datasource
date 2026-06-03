@@ -2,15 +2,22 @@
   "type": "datasource",
   "name": "MySQL",
   "id": "mysql",
-  "executable": "gpx_grafana-mysql-datasource",
   "category": "sql",
-
+  "executable": "gpx_grafana-mysql-datasource",
+  "alerting": true,
+  "annotations": true,
+  "metrics": true,
+  "logs": true,
+  "backend": true,
+  "queryOptions": {
+    "minInterval": true
+  },
   "info": {
     "description": "Data source for MySQL databases",
     "keywords": [
-        "mysql",
-        "database",
-        "sql"
+      "mysql",
+      "database",
+      "sql"
     ],
     "author": {
       "name": "Grafana Labs",
@@ -23,21 +30,18 @@
     "version": "%VERSION%",
     "updated": "%TODAY%",
     "links": [
-      { "name": "Raise issue", "url": "https://github.com/grafana/grafana-mysql-datasource/issues/new" },
-      { "name": "Documentation", "url": "https://grafana.com/docs/grafana/latest/datasources/mysql/" }
+      {
+        "name": "Raise issue",
+        "url": "https://github.com/grafana/grafana-mysql-datasource/issues/new"
+      },
+      {
+        "name": "Documentation",
+        "url": "https://grafana.com/docs/plugins/grafana-mysql-datasource/latest"
+      }
     ]
   },
   "dependencies": {
     "grafanaDependency": ">=12.3.0",
     "plugins": []
-  },
-
-  "alerting": true,
-  "annotations": true,
-  "metrics": true,
-  "backend": true,
-
-  "queryOptions": {
-    "minInterval": true
   }
 }
