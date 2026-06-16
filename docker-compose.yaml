@@ -1,0 +1,46 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: grafana-mysql-datasource-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdata
+      MYSQL_USER: grafana
+      MYSQL_PASSWORD: grafana
+    ports:
+      - '3306:3306'
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-uroot', '-prootpass']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  mysql-loader:
+    image: mysql:8.4
+    container_name: grafana-mysql-datasource-loader
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./tests/e2e/fixtures:/fixtures:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        mysql -h mysql -uroot -prootpass < /fixtures/seed.sql
+        mysql -h mysql -uroot -prootpass -e "GRANT ALL PRIVILEGES ON testdata.* TO 'grafana'@'%'; FLUSH PRIVILEGES;"
+    restart: 'no'
+
+  grafana:
+    extends:
+      file: .config/docker-compose-base.yaml
+      service: grafana
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mysql-loader:
+        condition: service_completed_successfully
+    environment:
+      GF_FEATURE_TOGGLES_splashScreen: "false"

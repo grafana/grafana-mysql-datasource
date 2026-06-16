@@ -1,0 +1,21 @@
+apiVersion: 1
+
+datasources:
+  - name: 'mysql'
+    uid: 'mysql-ds-m' # match provisioned datasource in datasourcese2e instance
+    type: 'mysql'
+    access: proxy
+    isDefault: true
+    orgId: 1
+    version: 1
+    editable: true
+    url: 'mysql:3306'
+    user: 'grafana'
+    jsonData:
+      database: 'testdata'
+      maxOpenConns: 10
+      maxIdleConns: 10
+      maxIdleConnsAuto: true
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: 'grafana'

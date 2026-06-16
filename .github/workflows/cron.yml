@@ -1,0 +1,17 @@
+name: Scheduled Cloud end-to-end tests
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  playwright-cloud:
+    uses: grafana/data-sources-ci-workflows/.github/workflows/playwright-cloud.yml@main
+    secrets: inherit
+    with:
+      repo-secrets: |
+        DS_INSTANCE_URL=mysql:url
+        DS_INSTANCE_PASSWORD=mysql:secure_password
+        DS_INSTANCE_USERNAME=mysql:user
+        DS_INSTANCE_DATABASE=mysql:json_database
