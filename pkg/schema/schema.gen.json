@@ -1,0 +1,118 @@
+{
+  "targetApiVersion": "v0alpha1",
+  "settings": {
+    "spec": {
+      "type": "object",
+      "required": [
+        "url",
+        "user"
+      ],
+      "properties": {
+        "jsonData": {
+          "type": "object",
+          "properties": {
+            "allowCleartextPasswords": {
+              "description": "Allows using the cleartext client side plugin if required by an account.",
+              "type": "boolean"
+            },
+            "authenticationType": {
+              "description": "The authentication method used to connect to the database.",
+              "type": "string"
+            },
+            "connMaxLifetime": {
+              "description": "Maximum amount of time in seconds a connection may be reused.",
+              "type": "number",
+              "minimum": 0
+            },
+            "connectionTimeout": {
+              "description": "The number of seconds to wait before aborting attempts to connect to the database.",
+              "type": "number",
+              "minimum": 0
+            },
+            "database": {
+              "description": "MySQL database name.",
+              "type": "string"
+            },
+            "enableSecureSocksProxy": {
+              "description": "Enables proxying the datasource connection through the secure socks proxy.",
+              "type": "boolean"
+            },
+            "encrypt": {
+              "description": "Determines whether or how the connection to the server is encrypted.",
+              "type": "string"
+            },
+            "maxIdleConns": {
+              "description": "Maximum number of idle connections in the connection pool.",
+              "type": "number",
+              "minimum": 0
+            },
+            "maxOpenConns": {
+              "description": "Maximum number of open connections to the database.",
+              "type": "number",
+              "minimum": 0
+            },
+            "secureSocksProxyUsername": {
+              "description": "Username used to authenticate with the secure socks proxy.",
+              "type": "string",
+              "x-dsconfig-depends-on": "jsonData.enableSecureSocksProxy == true"
+            },
+            "servername": {
+              "description": "Server name used to verify the hostname on the returned TLS certificate.",
+              "type": "string"
+            },
+            "sslCertFile": {
+              "description": "Path to the PEM-encoded client certificate file used for TLS client authentication.",
+              "type": "string"
+            },
+            "sslKeyFile": {
+              "description": "Path to the PEM-encoded client private key file used for TLS client authentication.",
+              "type": "string"
+            },
+            "sslRootCertFile": {
+              "description": "Path to the PEM-encoded CA certificate file used to verify the server certificate.",
+              "type": "string"
+            },
+            "sslmode": {
+              "description": "Determines whether and with what priority a secure SSL TCP/IP connection is negotiated with the server.",
+              "type": "string"
+            },
+            "timeInterval": {
+              "description": "A lower limit for the auto group by time interval. Recommended to be set to write frequency, for example 1m if your data is written every minute.",
+              "type": "string"
+            },
+            "timescaledb": {
+              "description": "Enables TimescaleDB-specific features and query support.",
+              "type": "boolean"
+            },
+            "timezone": {
+              "description": "Specify the timezone used in the database session, such as Europe/Berlin or +02:00.",
+              "type": "string"
+            },
+            "tlsConfigurationMethod": {
+              "description": "How the TLS certificates are configured: as file paths on disk or as file contents in secure JSON data.",
+              "type": "string"
+            },
+            "tlsSkipVerify": {
+              "description": "When enabled, skips verification of the MySQL server's TLS certificate chain and host name.",
+              "type": "boolean"
+            }
+          }
+        },
+        "url": {
+          "description": "MySQL host and port.",
+          "type": "string"
+        },
+        "user": {
+          "description": "Database username.",
+          "type": "string"
+        }
+      }
+    },
+    "secureValues": [
+      {
+        "key": "password",
+        "description": "Database password."
+      }
+    ]
+  }
+}
