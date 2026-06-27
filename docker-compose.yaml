@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:9.7@sha256:ad88e1c86cbf12ef52d0a0360cd4b774d22956c5ee9c565645fb019d7aacb6c3
     container_name: grafana-mysql-datasource-mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   mysql-loader:
-    image: mysql:8.4
+    image: mysql:9.7@sha256:ad88e1c86cbf12ef52d0a0360cd4b774d22956c5ee9c565645fb019d7aacb6c3
     container_name: grafana-mysql-datasource-loader
     depends_on:
       mysql:
