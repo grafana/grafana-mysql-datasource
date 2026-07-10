@@ -5,10 +5,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
 
 const rsIdentifier = `([_a-zA-Z0-9]+)`
@@ -174,6 +174,9 @@ func (m *mySQLMacroEngine) evaluateMacro(timeRange backend.TimeRange, query *bac
 		if err != nil {
 			return "", fmt.Errorf("error parsing interval %v", args[1])
 		}
+		if interval <= 0 {
+			return "", fmt.Errorf("interval must be positive, got %v", args[1])
+		}
 		if len(args) == 3 {
 			err := sqleng.SetupFillmode(query, interval, args[2])
 			if err != nil {
@@ -208,6 +211,9 @@ func (m *mySQLMacroEngine) evaluateMacro(timeRange backend.TimeRange, query *bac
 		interval, err := gtime.ParseInterval(strings.Trim(args[1], `'`))
 		if err != nil {
 			return "", fmt.Errorf("error parsing interval %v", args[1])
+		}
+		if interval <= 0 {
+			return "", fmt.Errorf("interval must be positive, got %v", args[1])
 		}
 		if len(args) == 3 {
 			err := sqleng.SetupFillmode(query, interval, args[2])

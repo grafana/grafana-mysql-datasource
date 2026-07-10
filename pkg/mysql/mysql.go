@@ -21,8 +21,8 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 const (
@@ -205,6 +205,25 @@ func (t *mysqlQueryResultTransformer) GetConverterList() []sqlutil.StringConvert
 			Name:           "handle BIGINT",
 			InputScanKind:  reflect.Struct,
 			InputTypeName:  "BIGINT",
+			ConversionFunc: func(in *string) (*string, error) { return in, nil },
+			Replacer: &sqlutil.StringFieldReplacer{
+				OutputFieldType: data.FieldTypeNullableInt64,
+				ReplaceFunc: func(in *string) (any, error) {
+					if in == nil {
+						return nil, nil
+					}
+					v, err := strconv.ParseInt(*in, 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					return &v, nil
+				},
+			},
+		},
+		{
+			Name:           "handle UNSIGNED BIGINT",
+			InputScanKind:  reflect.Struct,
+			InputTypeName:  "UNSIGNED BIGINT",
 			ConversionFunc: func(in *string) (*string, error) { return in, nil },
 			Replacer: &sqlutil.StringFieldReplacer{
 				OutputFieldType: data.FieldTypeNullableInt64,
