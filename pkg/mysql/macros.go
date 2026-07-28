@@ -5,12 +5,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
-	"github.com/grafana/grafana/pkg/tsdb/sqlmacro"
 )
+
+// macroRegExp matches a complete Grafana macro call of the form $name(...).
+var macroRegExp = regexp.MustCompile(`\$([_a-zA-Z0-9]+)\(([^\)]*)\)`)
 
 var restrictedRegExp = regexp.MustCompile(`(?im)([\s]*show[\s]+grants|[\s,]session_user\([^\)]*\)|[\s,]current_user(\([^\)]*\))?|[\s,]system_user\([^\)]*\)|[\s,]user\([^\)]*\))([\s,;]|$)`)
 
@@ -123,7 +125,7 @@ func (m *mySQLMacroEngine) Interpolate(query *backend.DataQuery, timeRange backe
 
 	var macroError error
 
-	sql = m.ReplaceAllStringSubmatchFunc(sqlmacro.RegExp, sql, func(groups []string) string {
+	sql = m.ReplaceAllStringSubmatchFunc(macroRegExp, sql, func(groups []string) string {
 		args := strings.Split(groups[2], ",")
 		for i, arg := range args {
 			args[i] = strings.Trim(arg, " ")
