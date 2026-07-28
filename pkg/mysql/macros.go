@@ -5,10 +5,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
 
 // macroRegExp matches a complete Grafana macro call of the form $name(...).
