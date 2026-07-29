@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
 
 func TestMacroEngine(t *testing.T) {
@@ -297,5 +298,43 @@ func TestStripSQLComments(t *testing.T) {
 		sql := "SELECT 1 FROM t WHERE id = 42"
 		result := stripSQLComments(sql)
 		require.Equal(t, sql, result)
+	})
+
+	t.Run("strips a block comment shaped like a SQLCommenter tag", func(t *testing.T) {
+		// stripSQLComments strips all comments; trailing SQLCommenter tags are
+		// preserved earlier in the pipeline by sqleng.SplitTrailingSQLCommenter.
+		result := stripSQLComments("SELECT 1 /*application='grafana',feature='panel'*/")
+		require.Equal(t, "SELECT 1 ", result)
+	})
+}
+
+// TestPreserveSQLCommenterTag pins the split-then-re-append behavior that
+// preserves a trailing SQLCommenter tag after macro interpolation. It mirrors
+// the steps the query engine performs (see sqleng/sql_engine.go).
+func TestPreserveSQLCommenterTag(t *testing.T) {
+	engine := &mySQLMacroEngine{
+		logger:    backend.NewLoggerWith("logger", "test"),
+		userError: "inspect Grafana server log for details",
+	}
+	query := &backend.DataQuery{}
+	from := time.Date(2018, 4, 12, 18, 0, 0, 0, time.UTC)
+	to := from.Add(5 * time.Minute)
+	timeRange := backend.TimeRange{From: from, To: to}
+
+	t.Run("interpolates macros and preserves the SQLCommenter tag", func(t *testing.T) {
+		const tag = "/*application='grafana',dashboard='sales'*/"
+		sql := fmt.Sprintf("SELECT $__timeFrom() %s", tag)
+
+		rawSQL, sqlCommenterTag := sqleng.SplitTrailingSQLCommenter(sql, "--", "#")
+		require.Equal(t, "SELECT $__timeFrom() ", rawSQL)
+		require.Equal(t, tag, sqlCommenterTag)
+
+		interpolated, err := engine.Interpolate(query, timeRange, rawSQL)
+		require.NoError(t, err)
+
+		result := interpolated + sqlCommenterTag
+
+		expected := fmt.Sprintf("SELECT FROM_UNIXTIME(%d) %s", from.Unix(), tag)
+		require.Equal(t, expected, result)
 	})
 }
