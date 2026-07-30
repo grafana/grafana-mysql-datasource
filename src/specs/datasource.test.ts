@@ -21,11 +21,8 @@ jest.mock('@grafana/runtime', () => ({
   }),
 }));
 
-const uid = '0000';
-jest.mock('@grafana/data', () => ({
-  ...jest.requireActual('@grafana/data'),
-  generateUUID: () => uid,
-}));
+const uid = '00000000-0000-0000-0000-000000000000';
+jest.spyOn(crypto, 'randomUUID').mockReturnValue(uid);
 
 describe('MySQLDatasource', () => {
   const defaultRange = getDefaultTimeRange(); // it does not matter what value this has
