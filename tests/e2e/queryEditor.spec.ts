@@ -140,6 +140,21 @@ test.describe('Query editor', () => {
       await expect(page.getByRole('switch', { name: /Group/ })).toBeVisible();
       await expect(page.getByRole('switch', { name: /Order/ })).toBeVisible();
     });
+
+    test('populates Column options after selecting a table', async ({ page }) => {
+      // This exercises MySqlDatasource.fetchFields(), which is only invoked
+      // once a table is selected. Merely asserting the Column combobox is
+      // visible (see above) does not trigger this code path. Asserting a
+      // real column name is required too: the Column combobox always
+      // includes a hardcoded "*" option regardless of whether fetchFields()
+      // succeeded, so checking for "any option" would pass even if
+      // fetchFields() silently failed.
+      await page.goto(exploreUrl(PROVISIONED_UID, { editorMode: 'builder' }));
+      await page.getByRole('combobox', { name: 'Table selector' }).click();
+      await page.getByRole('option', { name: 'world_data' }).click();
+      await page.getByRole('combobox', { name: 'Column' }).click();
+      await expect(page.getByRole('option', { name: 'base_country' })).toBeVisible();
+    });
   });
 });
 

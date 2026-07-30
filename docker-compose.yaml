@@ -44,3 +44,17 @@ services:
         condition: service_completed_successfully
     environment:
       GF_FEATURE_TOGGLES_splashScreen: "false"
+    configs:
+      # Run the externalized plugin in place of the core MySQL plugin.
+      # Without as_external=true, DuplicatePluginIDValidation (pkg/services/pluginsintegration/pipeline/steps.go)
+      # drops the external plugin because the core one is already registered under id=mysql.
+      # Env vars won't work here because Grafana only applies GF_PLUGIN_MYSQL_* overrides if
+      # [plugin.mysql] already exists in defaults.ini — and it doesn't.
+      - source: grafana_custom_ini
+        target: /etc/grafana/grafana.ini
+
+configs:
+  grafana_custom_ini:
+    content: |
+      [plugin.mysql]
+      as_external = true
