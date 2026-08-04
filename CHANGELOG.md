@@ -1,5 +1,9 @@
 # Changelog
 
+## 13.0.2
+
+- Dependency updates
+
 ## 13.0.1
 
 - Preserve SQLCommenter tags in stripSQLComments ([#123](https://github.com/grafana/grafana-mysql-datasource/pull/123))
