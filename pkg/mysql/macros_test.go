@@ -107,6 +107,85 @@ func TestMacroEngine(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("select %d", to.UnixNano()), sql)
 		})
 
+		t.Run("interpolate macros with truncator argument", func(t *testing.T) {
+			from := time.Date(2018, 4, 12, 18, 2, 3, 500, time.UTC)
+			to := from.Add(5 * time.Minute)
+			timeRange := backend.TimeRange{From: from, To: to}
+			truncFrom := from.Unix() - from.Unix()%300
+			truncTo := to.Unix() - to.Unix()%300
+
+			t.Run("interpolate __timeFilter function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "WHERE $__timeFilter(time_column, '5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("WHERE time_column BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d)", truncFrom, truncTo), sql)
+			})
+
+			t.Run("interpolate __timeFrom function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__timeFrom('5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("select FROM_UNIXTIME(%d)", truncFrom), sql)
+			})
+
+			t.Run("interpolate __timeTo function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__timeTo('5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("select FROM_UNIXTIME(%d)", truncTo), sql)
+			})
+
+			t.Run("interpolate __unixEpochFilter function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochFilter(time, '5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("select time >= %d AND time <= %d", truncFrom, truncTo), sql)
+			})
+
+			t.Run("interpolate __unixEpochFrom function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochFrom('5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("select %d", truncFrom), sql)
+			})
+
+			t.Run("interpolate __unixEpochTo function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochTo('5m')")
+				require.Nil(t, err)
+
+				require.Equal(t, fmt.Sprintf("select %d", truncTo), sql)
+			})
+
+			t.Run("interpolate __unixEpochNanoFilter function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochNanoFilter(time, '5m')")
+				require.Nil(t, err)
+
+				nanoInterval := int64(5 * time.Minute)
+				require.Equal(t, fmt.Sprintf("select time >= %d AND time <= %d", from.UnixNano()-from.UnixNano()%nanoInterval, to.UnixNano()-to.UnixNano()%nanoInterval), sql)
+			})
+
+			t.Run("interpolate __unixEpochNanoFrom function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochNanoFrom('5m')")
+				require.Nil(t, err)
+
+				nanoInterval := int64(5 * time.Minute)
+				require.Equal(t, fmt.Sprintf("select %d", from.UnixNano()-from.UnixNano()%nanoInterval), sql)
+			})
+
+			t.Run("interpolate __unixEpochNanoTo function with truncator", func(t *testing.T) {
+				sql, err := engine.Interpolate(query, timeRange, "select $__unixEpochNanoTo('5m')")
+				require.Nil(t, err)
+
+				nanoInterval := int64(5 * time.Minute)
+				require.Equal(t, fmt.Sprintf("select %d", to.UnixNano()-to.UnixNano()%nanoInterval), sql)
+			})
+
+			t.Run("invalid truncator returns error", func(t *testing.T) {
+				_, err := engine.Interpolate(query, timeRange, "select $__timeFrom('bogus')")
+				require.Error(t, err)
+			})
+		})
+
 		t.Run("interpolate __unixEpochGroup function", func(t *testing.T) {
 			sql, err := engine.Interpolate(query, timeRange, "SELECT $__unixEpochGroup(time_column,'5m')")
 			require.Nil(t, err)
