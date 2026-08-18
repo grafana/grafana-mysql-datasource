@@ -36,6 +36,71 @@ func (h *testQueryHandler) QueryData(ctx context.Context, req *backend.QueryData
 	return i.(*sqleng.DataSourceHandler).QueryData(ctx, req)
 }
 
+func TestNewInstanceSettingsCategorizesConstructionErrors(t *testing.T) {
+	cfg := config.NewGrafanaCfg(map[string]string{
+		config.SQLMaxOpenConnsDefault:           "0",
+		config.SQLMaxIdleConnsDefault:           "2",
+		config.SQLMaxConnLifetimeSecondsDefault: "14400",
+		config.SQLRowLimit:                      "1000000",
+		config.UserFacingDefaultError:           "",
+	})
+	ctx := config.WithGrafanaConfig(context.Background(), cfg)
+	factory := NewInstanceSettings(backend.NewLoggerWith("logger", "mysql.construction.test"))
+
+	tests := []struct {
+		name     string
+		settings backend.DataSourceInstanceSettings
+		category sqleng.HealthErrorCategory
+	}{
+		{
+			name: "invalid JSON settings",
+			settings: backend.DataSourceInstanceSettings{
+				JSONData: []byte(`{"allowCleartextPasswords":"invalid"}`),
+			},
+			category: sqleng.HealthErrorCategoryConfig,
+		},
+		{
+			name: "invalid TLS CA certificate",
+			settings: backend.DataSourceInstanceSettings{
+				ID:       1001,
+				URL:      "localhost:3306",
+				User:     "grafana",
+				Database: "testdata",
+				JSONData: []byte(`{"tlsAuthWithCACert":true}`),
+				DecryptedSecureJSONData: map[string]string{
+					"password":  "grafana",
+					"tlsCACert": "not a certificate",
+				},
+			},
+			category: sqleng.HealthErrorCategoryTLS,
+		},
+		{
+			name: "invalid DSN database name",
+			settings: backend.DataSourceInstanceSettings{
+				ID:       1002,
+				URL:      "localhost:3306",
+				User:     "grafana",
+				Database: "%invalid",
+				JSONData: []byte(`{}`),
+				DecryptedSecureJSONData: map[string]string{
+					"password": "grafana",
+				},
+			},
+			category: sqleng.HealthErrorCategoryConfig,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instance, err := factory(ctx, tt.settings)
+
+			require.Nil(t, instance)
+			require.Error(t, err)
+			require.ErrorContains(t, err, "["+string(tt.category)+"]")
+		})
+	}
+}
+
 // To run this test, set runMySqlTests=true
 // Or from the commandline: GRAFANA_TEST_DB=mysql go test -v ./pkg/tsdb/mysql
 // The tests require a MySQL db named grafana_ds_tests and a user/password grafana/password

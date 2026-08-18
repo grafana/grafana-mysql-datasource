@@ -20,15 +20,11 @@ const DS_DATABASE = process.env.DS_INSTANCE_DATABASE ?? 'testdata';
 
 test.describe('Config editor', () => {
   test.describe('rendering', () => {
-    test(
-      'smoke: should render config editor',
-      { tag: '@plugins' },
-      async ({ createDataSourceConfigPage, page }) => {
-        await createDataSourceConfigPage({ type: 'mysql' });
-        await expect(page.getByRole('heading', { name: 'Connection', exact: true })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Authentication' })).toBeVisible();
-      }
-    );
+    test('smoke: should render config editor', { tag: '@plugins' }, async ({ createDataSourceConfigPage, page }) => {
+      await createDataSourceConfigPage({ type: 'mysql' });
+      await expect(page.getByRole('heading', { name: 'Connection', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Authentication' })).toBeVisible();
+    });
 
     test('should render Connection section fields', async ({ createDataSourceConfigPage, page }) => {
       await createDataSourceConfigPage({ type: 'mysql' });
@@ -90,42 +86,39 @@ test.describe('Config editor', () => {
       page,
     }) => {
       const ds = await readProvisionedDataSource<MySQLOptions>({ fileName: PROVISIONED_FILE });
-      await gotoDataSourceConfigPage(ds.uid);
+      const configPage = await gotoDataSourceConfigPage(ds.uid);
       // The provisioned datasource is marked `editable: true`, so Grafana
       // renders "Save & test" rather than the read-only "Test" button. Click
       // it directly rather than using `configPage.saveAndTest()` so the
       // behaviour is the same whether or not the datasource is editable.
-      await page
-        .getByRole('button', { name: /^(Save & test|Test)$/ })
-        .click();
-      await expect(page.getByText('Database Connection OK')).toBeVisible({ timeout: 15000 });
+      await page.getByRole('button', { name: /^(Save & test|Test)$/ }).click();
+      await expect(configPage).toHaveAlert('success', { hasText: 'Database Connection OK', timeout: 15000 });
     });
 
-    test('should show error alert when credentials are invalid', async ({
-      createDataSourceConfigPage,
-      page,
-    }) => {
-      // `localhost` from inside the Grafana container never resolves to the
-      // MySQL service, so this is a reliable way to force a connection
-      // failure without mocking.
+    test('should show error alert when credentials are invalid', async ({ createDataSourceConfigPage, page }) => {
       const configPage = await createDataSourceConfigPage({ type: 'mysql' });
-      await page.getByPlaceholder('localhost:3306').fill('localhost:3306');
-      await page.getByPlaceholder('Username').fill('grafana');
+      await page.getByPlaceholder('localhost:3306').fill(`${DS_HOST}:${DS_PORT}`);
+      await page.getByPlaceholder('Database').fill(DS_DATABASE);
+      await page.getByPlaceholder('Username').fill(DS_USER);
       await page.getByPlaceholder('Password').fill('wrong-password');
       await configPage.saveAndTest();
-      await expect(page.getByTestId('data-testid Alert error')).toBeVisible({ timeout: 15000 });
+      await expect(configPage).toHaveAlert('error', {
+        hasText: '[auth] MySQL rejected the configured account. Verify the username, password, and account access.',
+        timeout: 15000,
+      });
     });
 
-    test('should show error alert when backend is unreachable', async ({
-      createDataSourceConfigPage,
-      page,
-    }) => {
+    test('should show error alert when backend is unreachable', async ({ createDataSourceConfigPage, page }) => {
       const configPage = await createDataSourceConfigPage({ type: 'mysql' });
       await page.getByPlaceholder('localhost:3306').fill('unreachable.invalid:3306');
       await page.getByPlaceholder('Username').fill('grafana');
       await page.getByPlaceholder('Password').fill('grafana');
       await configPage.saveAndTest();
-      await expect(page.getByTestId('data-testid Alert error')).toBeVisible({ timeout: 30000 });
+      await expect(configPage).toHaveAlert('error', {
+        hasText:
+          '[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. The configured hostname or service name could not be resolved.',
+        timeout: 30000,
+      });
     });
   });
 });

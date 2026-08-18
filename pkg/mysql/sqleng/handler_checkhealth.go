@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"net"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -13,70 +11,48 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
+const mysqlConfigurationDocsURL = "https://grafana.com/docs/grafana/latest/datasources/mysql/#configure-the-data-source"
+const mysqlErrorDocsURL = "https://dev.mysql.com/doc/mysql-errors/8.4/en/"
+
 func (e *DataSourceHandler) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	err := e.db.Ping()
 	if err != nil {
 		logCheckHealthError(ctx, e.dsInfo, err)
-		if strings.EqualFold(req.PluginContext.User.Role, "Admin") {
-			return ErrToHealthCheckResult(err)
+		category := classifyHealthError(err)
+		if !strings.EqualFold(req.PluginContext.User.Role, "Admin") {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: healthErrorMessage(err, category),
+			}, nil
 		}
-		var driverErr *mysql.MySQLError
-		if errors.As(err, &driverErr) {
-			return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: e.TransformQueryError(e.log, driverErr).Error()}, nil
-		}
-		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: e.TransformQueryError(e.log, err).Error()}, nil
+		return ErrToHealthCheckResult(err, category)
 	}
 	return &backend.CheckHealthResult{Status: backend.HealthStatusOk, Message: "Database Connection OK"}, nil
 }
 
-// ErrToHealthCheckResult converts error into user friendly health check message
-// This should be called with non nil error. If the err parameter is empty, we will send Internal Server Error
-func ErrToHealthCheckResult(err error) (*backend.CheckHealthResult, error) {
-	if err == nil {
-		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: "Internal Server Error"}, nil
+// ErrToHealthCheckResult converts an error and its category into the Admin
+// result, including verbose upstream details.
+func ErrToHealthCheckResult(err error, category HealthErrorCategory) (*backend.CheckHealthResult, error) {
+	detailValues := map[string]string{}
+	if err != nil {
+		detailValues["verboseMessage"] = err.Error()
 	}
-	res := &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: err.Error()}
-	details := map[string]string{}
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		res.Message = "Network error: Failed to connect to the server"
-		if opErr != nil && opErr.Err != nil {
-			errMessage := opErr.Err.Error()
-			if strings.HasSuffix(opErr.Err.Error(), "no such host") {
-				errMessage = "no such host"
-			}
-			if strings.HasSuffix(opErr.Err.Error(), "unknown port") {
-				errMessage = "unknown port"
-			}
-			if strings.HasSuffix(opErr.Err.Error(), "invalid port") {
-				errMessage = "invalid port"
-			}
-			if strings.HasSuffix(opErr.Err.Error(), "missing port in address") {
-				errMessage = "missing port in address"
-			}
-			if strings.HasSuffix(opErr.Err.Error(), "invalid syntax") {
-				errMessage = "invalid syntax found in the address"
-			}
-			res.Message += fmt.Sprintf(". Error message: %s", errMessage)
-		}
-		details["verboseMessage"] = err.Error()
-		details["errorDetailsLink"] = "https://grafana.com/docs/grafana/latest/datasources/mysql/#configure-the-data-source"
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		detailValues["errorDetailsLink"] = mysqlErrorDocsURL
+	} else if category != HealthErrorCategoryUnknown {
+		detailValues["errorDetailsLink"] = mysqlConfigurationDocsURL
 	}
-	var driverErr *mysql.MySQLError
-	if errors.As(err, &driverErr) {
-		res.Message = "Database error: Failed to connect to the MySQL server"
-		if driverErr != nil && driverErr.Number > 0 {
-			res.Message += fmt.Sprintf(". MySQL error number: %d", driverErr.Number)
-		}
-		details["verboseMessage"] = err.Error()
-		details["errorDetailsLink"] = "https://dev.mysql.com/doc/mysql-errors/8.4/en/"
-	}
-	detailBytes, marshalErr := json.Marshal(details)
+	details, marshalErr := json.Marshal(detailValues)
 	if marshalErr != nil {
-		return res, nil
+		details = nil
 	}
-	res.JSONDetails = detailBytes
-	return res, nil
+
+	return &backend.CheckHealthResult{
+		Status:      backend.HealthStatusError,
+		Message:     healthErrorMessage(err, category),
+		JSONDetails: details,
+	}, nil
 }
 
 func logCheckHealthError(ctx context.Context, dsInfo DataSourceInfo, err error) {
