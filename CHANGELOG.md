@@ -1,5 +1,9 @@
 # Changelog
 
+## 13.1.1
+
+- Security fixes
+
 ## 13.1.0
 
 - Categorize MySQL health check errors and provide actionable connection guidance ([#133](https://github.com/grafana/grafana-mysql-datasource/pull/133))
