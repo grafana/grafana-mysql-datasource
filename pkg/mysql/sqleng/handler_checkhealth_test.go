@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/handlertest"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/stretchr/testify/require"
 )
@@ -113,4 +114,25 @@ func TestCheckHealthReturnsOKForSuccessfulPing(t *testing.T) {
 		Status:  backend.HealthStatusOk,
 		Message: "Database Connection OK",
 	}, result)
+}
+
+func TestCheckHealthMarksPingFailuresAsDownstream(t *testing.T) {
+	handler := &DataSourceHandler{
+		db:  newHealthTestDB(t, errors.New("ping failed")),
+		log: log.NewNullLogger(),
+	}
+	middlewareTest := handlertest.NewHandlerMiddlewareTest(t)
+	var checkHealthContext context.Context
+	middlewareTest.TestHandler.CheckHealthFunc = func(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+		checkHealthContext = ctx
+		return handler.CheckHealth(ctx, req)
+	}
+
+	result, err := middlewareTest.MiddlewareHandler.CheckHealth(context.Background(), &backend.CheckHealthRequest{
+		PluginContext: backend.PluginContext{User: &backend.User{Role: "Viewer"}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, backend.HealthStatusError, result.Status)
+	require.Equal(t, backend.ErrorSourceDownstream, backend.ErrorSourceFromContext(checkHealthContext))
 }

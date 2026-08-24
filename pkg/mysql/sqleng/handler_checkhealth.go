@@ -17,6 +17,8 @@ const mysqlErrorDocsURL = "https://dev.mysql.com/doc/mysql-errors/8.4/en/"
 func (e *DataSourceHandler) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	err := e.db.Ping()
 	if err != nil {
+		// The SDK handler middleware initializes the error-source context.
+		_ = backend.WithDownstreamErrorSource(ctx)
 		logCheckHealthError(ctx, e.dsInfo, err)
 		category := classifyHealthError(err)
 		if !strings.EqualFold(req.PluginContext.User.Role, "Admin") {
