@@ -41,11 +41,12 @@ func (e *DataSourceHandler) CheckHealth(ctx context.Context, req *backend.CheckH
 // result, including verbose upstream details.
 func ErrToHealthCheckResult(err error, category HealthErrorCategory) (*backend.CheckHealthResult, error) {
 	detailValues := map[string]string{}
-	if err != nil {
+	var mysqlErr *mysql.MySQLError
+	hasMySQLError := errors.As(err, &mysqlErr)
+	if err != nil && !(hasMySQLError && mysqlErr == nil) {
 		detailValues["verboseMessage"] = err.Error()
 	}
-	var mysqlErr *mysql.MySQLError
-	if errors.As(err, &mysqlErr) {
+	if hasMySQLError && mysqlErr != nil {
 		detailValues["errorDetailsLink"] = mysqlErrorDocsURL
 	} else if category != HealthErrorCategoryUnknown {
 		detailValues["errorDetailsLink"] = mysqlConfigurationDocsURL

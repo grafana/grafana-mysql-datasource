@@ -103,7 +103,8 @@ test.describe('Config editor', () => {
       await page.getByPlaceholder('Password').fill('wrong-password');
       await configPage.saveAndTest();
       await expect(configPage).toHaveAlert('error', {
-        hasText: '[auth] MySQL rejected the configured account. Verify the username, password, and account access.',
+        hasText:
+          '[auth] MySQL rejected the configured account. Verify the username, password, and account access. MySQL error number: 1045.',
         timeout: 15000,
       });
     });

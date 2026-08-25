@@ -22,6 +22,7 @@ func (timedOutError) Timeout() bool   { return true }
 func (timedOutError) Temporary() bool { return true }
 
 func TestClassifyHealthError(t *testing.T) {
+	var typedNilMySQLError *mysql.MySQLError
 	tests := []struct {
 		name string
 		err  error
@@ -32,6 +33,8 @@ func TestClassifyHealthError(t *testing.T) {
 		{name: "MySQL 1130", err: &mysql.MySQLError{Number: 1130}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1251", err: &mysql.MySQLError{Number: 1251}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1698", err: &mysql.MySQLError{Number: 1698}, want: HealthErrorCategoryAuth},
+		{name: "MySQL 1820", err: &mysql.MySQLError{Number: 1820}, want: HealthErrorCategoryAuth},
+		{name: "MySQL 1862", err: &mysql.MySQLError{Number: 1862}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1049", err: &mysql.MySQLError{Number: 1049}, want: HealthErrorCategoryConfig},
 		{name: "MySQL 1298", err: &mysql.MySQLError{Number: 1298}, want: HealthErrorCategoryConfig},
 		{name: "MySQL 3159", err: &mysql.MySQLError{Number: 3159}, want: HealthErrorCategoryTLS},
@@ -51,11 +54,17 @@ func TestClassifyHealthError(t *testing.T) {
 		{name: "native authentication disabled", err: mysql.ErrNativePassword, want: HealthErrorCategoryAuth},
 		{name: "old authentication disabled", err: mysql.ErrOldPassword, want: HealthErrorCategoryAuth},
 		{name: "unsupported authentication plugin", err: mysql.ErrUnknownPlugin, want: HealthErrorCategoryAuth},
+		{name: "invalid connection", err: mysql.ErrInvalidConn, want: HealthErrorCategoryNetwork},
+		{name: "malformed packet", err: mysql.ErrMalformPkt, want: HealthErrorCategoryNetwork},
+		{name: "packet out of sync", err: mysql.ErrPktSync, want: HealthErrorCategoryNetwork},
+		{name: "multi-packet out of sync", err: mysql.ErrPktSyncMul, want: HealthErrorCategoryNetwork},
+		{name: "unsupported server protocol", err: mysql.ErrOldProtocol, want: HealthErrorCategoryServer},
 		{name: "connection closed during setup", err: io.EOF, want: HealthErrorCategoryNetwork},
 		{name: "certificate validation", err: x509.UnknownAuthorityError{}, want: HealthErrorCategoryTLS},
 		{name: "TLS alert", err: tls.AlertError(40), want: HealthErrorCategoryTLS},
 		{name: "TLS record header", err: tls.RecordHeaderError{}, want: HealthErrorCategoryTLS},
 		{name: "TLS alert wrapped by network operation", err: &net.OpError{Err: errors.New("tls: handshake failure")}, want: HealthErrorCategoryTLS},
+		{name: "typed nil MySQL error", err: typedNilMySQLError, want: HealthErrorCategoryUnknown},
 		{name: "unknown", err: errors.New("unrecognized error"), want: HealthErrorCategoryUnknown},
 	}
 

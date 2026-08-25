@@ -31,6 +31,11 @@ func classifyHealthError(err error) HealthErrorCategory {
 	if err == nil {
 		return HealthErrorCategoryUnknown
 	}
+	var mysqlErr *mysql.MySQLError
+	hasMySQLError := errors.As(err, &mysqlErr)
+	if hasMySQLError && mysqlErr == nil {
+		return HealthErrorCategoryUnknown
+	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		return HealthErrorCategoryTimeout
@@ -62,16 +67,24 @@ func classifyHealthError(err error) HealthErrorCategory {
 		errors.Is(err, mysql.ErrOldPassword) || errors.Is(err, mysql.ErrUnknownPlugin) {
 		return HealthErrorCategoryAuth
 	}
+	if errors.Is(err, mysql.ErrInvalidConn) || errors.Is(err, mysql.ErrMalformPkt) ||
+		errors.Is(err, mysql.ErrPktSync) || errors.Is(err, mysql.ErrPktSyncMul) {
+		return HealthErrorCategoryNetwork
+	}
+	if errors.Is(err, mysql.ErrOldProtocol) {
+		return HealthErrorCategoryServer
+	}
 
-	var mysqlErr *mysql.MySQLError
-	if errors.As(err, &mysqlErr) {
+	if hasMySQLError {
 		switch mysqlErr.Number {
 		case mysqlerr.ER_DBACCESS_DENIED_ERROR,
 			mysqlerr.ER_ACCESS_DENIED_ERROR,
 			mysqlerr.ER_HOST_NOT_PRIVILEGED,
 			mysqlerr.ER_ACCOUNT_HAS_BEEN_LOCKED,
 			mysqlerr.ER_NOT_SUPPORTED_AUTH_MODE,
-			mysqlerr.ER_ACCESS_DENIED_NO_PASSWORD_ERROR:
+			mysqlerr.ER_ACCESS_DENIED_NO_PASSWORD_ERROR,
+			mysqlerr.ER_MUST_CHANGE_PASSWORD,
+			mysqlerr.ER_MUST_CHANGE_PASSWORD_LOGIN:
 			return HealthErrorCategoryAuth
 		case mysqlerr.ER_BAD_DB_ERROR, mysqlerr.ER_UNKNOWN_TIME_ZONE:
 			return HealthErrorCategoryConfig
@@ -134,7 +147,11 @@ func healthErrorMessage(err error, category HealthErrorCategory) string {
 	}
 
 	var mysqlErr *mysql.MySQLError
-	if errors.As(err, &mysqlErr) && mysqlErr.Number > 0 {
+	hasMySQLError := errors.As(err, &mysqlErr)
+	if hasMySQLError && mysqlErr == nil {
+		return fmt.Sprintf("[%s] %s", category, message)
+	}
+	if hasMySQLError && mysqlErr.Number > 0 {
 		message += fmt.Sprintf(" MySQL error number: %d.", mysqlErr.Number)
 	}
 

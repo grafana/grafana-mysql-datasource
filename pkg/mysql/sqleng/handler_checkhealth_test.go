@@ -38,6 +38,17 @@ func TestAdminHealthCheckResultIncludesVerboseMySQLErrorDetails(t *testing.T) {
 	}, details)
 }
 
+func TestAdminHealthCheckResultHandlesTypedNilMySQLError(t *testing.T) {
+	var typedNilMySQLError *mysql.MySQLError
+
+	result, err := ErrToHealthCheckResult(typedNilMySQLError, HealthErrorCategoryUnknown)
+
+	require.NoError(t, err)
+	require.Equal(t, backend.HealthStatusError, result.Status)
+	require.Equal(t, "[unknown] The MySQL connection failed. Review the datasource configuration and MySQL server logs.", result.Message)
+	require.JSONEq(t, `{}`, string(result.JSONDetails))
+}
+
 type healthTestDriver struct {
 	pingErr error
 }
