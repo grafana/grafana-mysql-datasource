@@ -5,11 +5,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"strings"
 	"syscall"
 
+	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -30,8 +32,11 @@ func classifyHealthError(err error) HealthErrorCategory {
 		return HealthErrorCategoryUnknown
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return HealthErrorCategoryTimeout
+	}
+	if errors.Is(err, context.Canceled) {
+		return HealthErrorCategoryUnknown
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
@@ -53,18 +58,32 @@ func classifyHealthError(err error) HealthErrorCategory {
 		return HealthErrorCategoryTLS
 	}
 
+	if errors.Is(err, mysql.ErrCleartextPassword) || errors.Is(err, mysql.ErrNativePassword) ||
+		errors.Is(err, mysql.ErrOldPassword) || errors.Is(err, mysql.ErrUnknownPlugin) {
+		return HealthErrorCategoryAuth
+	}
+
 	var mysqlErr *mysql.MySQLError
 	if errors.As(err, &mysqlErr) {
 		switch mysqlErr.Number {
-		case 1044, 1045, 1130, 3118:
+		case mysqlerr.ER_DBACCESS_DENIED_ERROR,
+			mysqlerr.ER_ACCESS_DENIED_ERROR,
+			mysqlerr.ER_HOST_NOT_PRIVILEGED,
+			mysqlerr.ER_ACCOUNT_HAS_BEEN_LOCKED,
+			mysqlerr.ER_NOT_SUPPORTED_AUTH_MODE,
+			mysqlerr.ER_ACCESS_DENIED_NO_PASSWORD_ERROR:
 			return HealthErrorCategoryAuth
-		case 1049, 1298:
+		case mysqlerr.ER_BAD_DB_ERROR, mysqlerr.ER_UNKNOWN_TIME_ZONE:
 			return HealthErrorCategoryConfig
-		case 3159:
+		case mysqlerr.ER_SECURE_TRANSPORT_REQUIRED:
 			return HealthErrorCategoryTLS
 		default:
 			return HealthErrorCategoryServer
 		}
+	}
+
+	if errors.Is(err, io.EOF) {
+		return HealthErrorCategoryNetwork
 	}
 
 	// Invalid or missing addresses are configuration failures even when the
@@ -98,39 +117,47 @@ func healthErrorMessage(err error, category HealthErrorCategory) string {
 	var message string
 	switch category {
 	case HealthErrorCategoryAuth:
-		message = "[auth] MySQL rejected the configured account. Verify the username, password, and account access."
+		message = "MySQL rejected the configured account. Verify the username, password, and account access."
 	case HealthErrorCategoryConfig:
-		message = "[config] The MySQL connection settings are invalid. Verify the server address, database, and session settings."
+		message = "The MySQL connection settings are invalid. Verify the server address, database, and session settings."
 	case HealthErrorCategoryNetwork:
-		message = "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server."
+		message = "Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server."
 	case HealthErrorCategoryTimeout:
-		message = "[timeout] The MySQL connection timed out. Verify server availability, firewall rules, and timeout settings."
+		message = "The MySQL connection timed out. Verify server availability, firewall rules, and timeout settings."
 	case HealthErrorCategoryTLS:
-		message = "[tls] The MySQL TLS connection failed. Verify the datasource TLS settings and server certificate."
+		message = "The MySQL TLS connection failed. Verify the datasource TLS settings and server certificate."
 	case HealthErrorCategoryServer:
-		message = "[server] MySQL rejected the connection. Check server availability, capacity, and server logs."
+		message = "MySQL rejected the connection. Check server availability, capacity, and server logs."
 	default:
-		message = "[unknown] The MySQL connection failed. Review the datasource configuration and MySQL server logs."
+		category = HealthErrorCategoryUnknown
+		message = "The MySQL connection failed. Review the datasource configuration and MySQL server logs."
+	}
+
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number > 0 {
+		message += fmt.Sprintf(" MySQL error number: %d.", mysqlErr.Number)
 	}
 
 	switch {
+	case errors.Is(err, mysql.ErrCleartextPassword):
+		message += " The account requires cleartext authentication; enable \"Allow Cleartext Passwords\" only when the connection is appropriately secured."
 	case errors.Is(err, syscall.ECONNREFUSED):
-		return message + " MySQL refused the connection; verify that it is running and accepting connections on the configured port."
+		message += " MySQL refused the connection; verify that it is running and accepting connections on the configured port."
 	case errors.Is(err, syscall.ENETUNREACH), errors.Is(err, syscall.EHOSTUNREACH):
-		return message + " The configured destination is unreachable from the Grafana server."
+		message += " The configured destination is unreachable from the Grafana server."
 	case errors.Is(err, io.EOF):
-		return message + " MySQL closed the connection during connection setup."
+		message += " The remote endpoint closed the connection during connection setup."
 	}
 
 	var addressErr *net.AddrError
 	if errors.As(err, &addressErr) {
-		return message + " The server address is malformed; enter it as host:port without an http://, https://, or mysql:// prefix."
+		message += " The server address is malformed; enter it as host:port without an http://, https://, or mysql:// prefix."
 	}
 
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
-		return message + " The configured hostname or service name could not be resolved."
+		message += " The configured hostname or service name could not be resolved."
 	}
 
-	return message
+	return fmt.Sprintf("[%s] %s", category, message)
 }

@@ -30,6 +30,8 @@ func TestClassifyHealthError(t *testing.T) {
 		{name: "MySQL 1044", err: &mysql.MySQLError{Number: 1044}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1045", err: &mysql.MySQLError{Number: 1045}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1130", err: &mysql.MySQLError{Number: 1130}, want: HealthErrorCategoryAuth},
+		{name: "MySQL 1251", err: &mysql.MySQLError{Number: 1251}, want: HealthErrorCategoryAuth},
+		{name: "MySQL 1698", err: &mysql.MySQLError{Number: 1698}, want: HealthErrorCategoryAuth},
 		{name: "MySQL 1049", err: &mysql.MySQLError{Number: 1049}, want: HealthErrorCategoryConfig},
 		{name: "MySQL 1298", err: &mysql.MySQLError{Number: 1298}, want: HealthErrorCategoryConfig},
 		{name: "MySQL 3159", err: &mysql.MySQLError{Number: 3159}, want: HealthErrorCategoryTLS},
@@ -39,9 +41,17 @@ func TestClassifyHealthError(t *testing.T) {
 		{name: "DNS failure", err: &net.DNSError{Err: "no such host", Name: "invalid.example"}, want: HealthErrorCategoryNetwork},
 		{name: "connection refused", err: &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}, want: HealthErrorCategoryNetwork},
 		{name: "context deadline", err: context.DeadlineExceeded, want: HealthErrorCategoryTimeout},
+		{name: "context canceled", err: context.Canceled, want: HealthErrorCategoryUnknown},
+		{name: "context canceled during network operation", err: &net.OpError{Err: context.Canceled}, want: HealthErrorCategoryUnknown},
 		{name: "timed out network error", err: &net.OpError{Err: timedOutError{}}, want: HealthErrorCategoryTimeout},
 		{name: "server without TLS", err: mysql.ErrNoTLS, want: HealthErrorCategoryTLS},
 		{name: "server without TLS wrapped by network operation", err: &net.OpError{Err: mysql.ErrNoTLS}, want: HealthErrorCategoryTLS},
+		{name: "cleartext authentication disabled", err: mysql.ErrCleartextPassword, want: HealthErrorCategoryAuth},
+		{name: "cleartext authentication disabled during network operation", err: &net.OpError{Err: mysql.ErrCleartextPassword}, want: HealthErrorCategoryAuth},
+		{name: "native authentication disabled", err: mysql.ErrNativePassword, want: HealthErrorCategoryAuth},
+		{name: "old authentication disabled", err: mysql.ErrOldPassword, want: HealthErrorCategoryAuth},
+		{name: "unsupported authentication plugin", err: mysql.ErrUnknownPlugin, want: HealthErrorCategoryAuth},
+		{name: "connection closed during setup", err: io.EOF, want: HealthErrorCategoryNetwork},
 		{name: "certificate validation", err: x509.UnknownAuthorityError{}, want: HealthErrorCategoryTLS},
 		{name: "TLS alert", err: tls.AlertError(40), want: HealthErrorCategoryTLS},
 		{name: "TLS record header", err: tls.RecordHeaderError{}, want: HealthErrorCategoryTLS},
@@ -72,6 +82,22 @@ func TestHealthErrorMessagesIncludeCategory(t *testing.T) {
 	}
 }
 
+func TestHealthErrorMessageIncludesMySQLErrorNumber(t *testing.T) {
+	err := &mysql.MySQLError{Number: 1045, Message: "raw upstream error"}
+
+	message := healthErrorMessage(err, HealthErrorCategoryAuth)
+
+	require.Contains(t, message, "MySQL error number: 1045.")
+	require.NotContains(t, message, "raw upstream error")
+}
+
+func TestHealthErrorMessageExplainsCleartextAuthentication(t *testing.T) {
+	message := healthErrorMessage(mysql.ErrCleartextPassword, HealthErrorCategoryAuth)
+
+	require.Equal(t, "[auth] MySQL rejected the configured account. Verify the username, password, and account access. The account requires cleartext authentication; enable \"Allow Cleartext Passwords\" only when the connection is appropriately secured.", message)
+	require.NotContains(t, message, "allowCleartextPasswords=1")
+}
+
 func TestHealthErrorMessageAddsFixedNetworkGuidance(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -83,19 +109,19 @@ func TestHealthErrorMessageAddsFixedNetworkGuidance(t *testing.T) {
 			name:     "connection refused",
 			err:      &net.OpError{Op: "dial", Net: "tcp", Err: fmt.Errorf("invalid-host:3306: %w", syscall.ECONNREFUSED)},
 			category: HealthErrorCategoryNetwork,
-			want:     "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. MySQL refused the connection; verify that it is running and accepting connections on the configured port.",
+			want:     "[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server. MySQL refused the connection; verify that it is running and accepting connections on the configured port.",
 		},
 		{
 			name:     "destination unreachable",
 			err:      &net.OpError{Op: "dial", Net: "tcp", Err: fmt.Errorf("invalid-host:3306: %w", syscall.EHOSTUNREACH)},
 			category: HealthErrorCategoryNetwork,
-			want:     "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. The configured destination is unreachable from the Grafana server.",
+			want:     "[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server. The configured destination is unreachable from the Grafana server.",
 		},
 		{
 			name:     "connection closed",
 			err:      &net.OpError{Op: "read", Net: "tcp", Err: fmt.Errorf("invalid-host:3306: %w", io.EOF)},
 			category: HealthErrorCategoryNetwork,
-			want:     "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. MySQL closed the connection during connection setup.",
+			want:     "[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server. The remote endpoint closed the connection during connection setup.",
 		},
 		{
 			name:     "malformed address",
@@ -107,13 +133,13 @@ func TestHealthErrorMessageAddsFixedNetworkGuidance(t *testing.T) {
 			name:     "DNS failure",
 			err:      &net.OpError{Op: "dial", Net: "tcp", Err: &net.DNSError{Err: "no such host", Name: "invalid-host"}},
 			category: HealthErrorCategoryNetwork,
-			want:     "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. The configured hostname or service name could not be resolved.",
+			want:     "[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server. The configured hostname or service name could not be resolved.",
 		},
 		{
 			name:     "unrecognized network failure",
 			err:      &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("raw upstream error")},
 			category: HealthErrorCategoryNetwork,
-			want:     "[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server.",
+			want:     "[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server.",
 		},
 	}
 

@@ -21,10 +21,15 @@ func (e *DataSourceHandler) CheckHealth(ctx context.Context, req *backend.CheckH
 		_ = backend.WithDownstreamErrorSource(ctx)
 		logCheckHealthError(ctx, e.dsInfo, err)
 		category := classifyHealthError(err)
-		if !strings.EqualFold(req.PluginContext.User.Role, "Admin") {
+		isAdmin := req.PluginContext.User != nil && strings.EqualFold(req.PluginContext.User.Role, "Admin")
+		if !isAdmin {
+			message := healthErrorMessage(err, category)
+			if e.userError != "" {
+				message += " " + e.userError
+			}
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
-				Message: healthErrorMessage(err, category),
+				Message: message,
 			}, nil
 		}
 		return ErrToHealthCheckResult(err, category)

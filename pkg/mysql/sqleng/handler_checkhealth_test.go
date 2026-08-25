@@ -69,39 +69,52 @@ func newHealthTestDB(t *testing.T, pingErr error) *sql.DB {
 	return db
 }
 
-func TestCheckHealthRestrictsVerboseErrorDetailsToAdmins(t *testing.T) {
+func TestCheckHealthReturnsVerboseDetailsForAdminsAndFallbackForOthers(t *testing.T) {
 	pingErr := &net.OpError{
 		Op:  "dial",
 		Net: "tcp",
 		Err: fmt.Errorf("invalid-host:3306: %w", syscall.ECONNREFUSED),
 	}
-	results := make(map[string]*backend.CheckHealthResult)
-	for _, role := range []string{"Admin", "Viewer"} {
-		handler := &DataSourceHandler{
-			db:  newHealthTestDB(t, pingErr),
-			log: log.NewNullLogger(),
-		}
-		result, err := handler.CheckHealth(context.Background(), &backend.CheckHealthRequest{
-			PluginContext: backend.PluginContext{User: &backend.User{Role: role}},
-		})
-		require.NoError(t, err)
-		require.Equal(t, backend.HealthStatusError, result.Status)
-		results[role] = result
+	const userFacingError = "See internal runbook DB-12."
+	wantMessage := healthErrorMessage(pingErr, HealthErrorCategoryNetwork)
+	tests := []struct {
+		name        string
+		user        *backend.User
+		wantDetails bool
+		wantMessage string
+	}{
+		{name: "Admin", user: &backend.User{Role: "Admin"}, wantDetails: true, wantMessage: wantMessage},
+		{name: "Viewer", user: &backend.User{Role: "Viewer"}, wantMessage: wantMessage + " " + userFacingError},
+		{name: "missing user", wantMessage: wantMessage + " " + userFacingError},
 	}
 
-	wantMessage := healthErrorMessage(pingErr, HealthErrorCategoryNetwork)
-	require.Equal(t, wantMessage, results["Admin"].Message)
-	require.Equal(t, wantMessage, results["Viewer"].Message)
-	require.Contains(t, string(results["Admin"].JSONDetails), "invalid-host")
-	require.NotContains(t, string(results["Viewer"].JSONDetails), "invalid-host")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := &DataSourceHandler{
+				db:        newHealthTestDB(t, pingErr),
+				log:       log.NewNullLogger(),
+				userError: userFacingError,
+			}
+			result, err := handler.CheckHealth(context.Background(), &backend.CheckHealthRequest{
+				PluginContext: backend.PluginContext{User: tt.user},
+			})
 
-	var adminDetails map[string]string
-	require.NoError(t, json.Unmarshal(results["Admin"].JSONDetails, &adminDetails))
-	require.Equal(t, map[string]string{
-		"errorDetailsLink": mysqlConfigurationDocsURL,
-		"verboseMessage":   pingErr.Error(),
-	}, adminDetails)
-	require.Nil(t, results["Viewer"].JSONDetails)
+			require.NoError(t, err)
+			require.Equal(t, backend.HealthStatusError, result.Status)
+			require.Equal(t, tt.wantMessage, result.Message)
+			if !tt.wantDetails {
+				require.Nil(t, result.JSONDetails)
+				return
+			}
+
+			var details map[string]string
+			require.NoError(t, json.Unmarshal(result.JSONDetails, &details))
+			require.Equal(t, map[string]string{
+				"errorDetailsLink": mysqlConfigurationDocsURL,
+				"verboseMessage":   pingErr.Error(),
+			}, details)
+		})
+	}
 }
 
 func TestCheckHealthReturnsOKForSuccessfulPing(t *testing.T) {

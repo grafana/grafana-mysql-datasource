@@ -111,12 +111,12 @@ test.describe('Config editor', () => {
     test('should show error alert when backend is unreachable', async ({ createDataSourceConfigPage, page }) => {
       const configPage = await createDataSourceConfigPage({ type: 'mysql' });
       await page.getByPlaceholder('localhost:3306').fill('unreachable.invalid:3306');
-      await page.getByPlaceholder('Username').fill('grafana');
-      await page.getByPlaceholder('Password').fill('grafana');
+      await page.getByPlaceholder('Username').fill(DS_USER);
+      await page.getByPlaceholder('Password').fill(DS_PASSWORD);
       await configPage.saveAndTest();
       await expect(configPage).toHaveAlert('error', {
         hasText:
-          '[network] Grafana could not reach MySQL. Verify the hostname, port, and network access from the Grafana server. The configured hostname or service name could not be resolved.',
+          '[network] Grafana could not establish a connection to MySQL. Verify the hostname, port, and network access from the Grafana server. The configured hostname or service name could not be resolved.',
         timeout: 30000,
       });
     });
