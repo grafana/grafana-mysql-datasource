@@ -43,7 +43,7 @@ func ErrToHealthCheckResult(err error, category HealthErrorCategory) (*backend.C
 	detailValues := map[string]string{}
 	var mysqlErr *mysql.MySQLError
 	hasMySQLError := errors.As(err, &mysqlErr)
-	if err != nil && !(hasMySQLError && mysqlErr == nil) {
+	if err != nil && (!hasMySQLError || mysqlErr != nil) {
 		detailValues["verboseMessage"] = err.Error()
 	}
 	if hasMySQLError && mysqlErr != nil {
