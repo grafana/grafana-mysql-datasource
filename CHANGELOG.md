@@ -1,5 +1,10 @@
 # Changelog
 
+## 13.0.3
+
+- Bump go v1.26.7 and grafana-plugin-sdk-go v0.296.4 and update backend dependencies 
+  ([#138](https://github.com/grafana/grafana-mysql-datasource/pull/138)) 
+
 ## 13.0.2
 
 - Dependency updates
