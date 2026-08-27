@@ -86,6 +86,18 @@ export function CheatSheet() {
         <li>$__unixEpochNanoFrom() -&gt; 1494410783152415214</li>
         <li>$__unixEpochNanoTo() -&gt; 1494497183142514872</li>
       </ul>
+      <p>
+        The `*Filter`, `*From` and `*To` macros accept an optional truncation interval that floors the injected timestamps to the
+        interval boundary (e.g. $__timeFrom(&apos;5m&apos;), $__timeFilter(column, &apos;5m&apos;),
+        $__unixEpochTo(&apos;5m&apos;)). This keeps generated queries stable across refreshes, improving hit rates in
+        query caching layers:
+      </p>
+      <ul className={styles.ulPadding}>
+        <li>$__unixEpochFrom() -&gt; 1492750937</li>
+        <li>$__unixEpochFrom(&apos;1m&apos;) -&gt; 1492750920</li>
+        <li>$__unixEpochFrom(&apos;5m&apos;) -&gt; 1492750800</li>
+        <li>$__timeFilter(column, &apos;5m&apos;) -&gt; column BETWEEN FROM_UNIXTIME(1492750800) AND FROM_UNIXTIME(1492751100)</li>
+      </ul>
     </div>
   );
 }

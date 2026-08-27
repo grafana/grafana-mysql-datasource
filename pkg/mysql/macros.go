@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -145,6 +146,57 @@ func (m *mySQLMacroEngine) Interpolate(query *backend.DataQuery, timeRange backe
 	return sql, nil
 }
 
+// argAt returns args[i], or an empty string when the argument is absent.
+func argAt(args []string, i int) string {
+	if i < len(args) {
+		return args[i]
+	}
+	return ""
+}
+
+// parseTruncator parses an optional truncation interval argument (e.g. '5m').
+// An empty argument means no truncation and yields a zero interval.
+func parseTruncator(name, arg string) (time.Duration, error) {
+	arg = strings.Trim(arg, `'"`)
+	if arg == "" {
+		return 0, nil
+	}
+	interval, err := gtime.ParseInterval(arg)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing truncator interval %v for macro %v", arg, name)
+	}
+	if interval <= 0 {
+		return 0, fmt.Errorf("truncator interval must be positive, got %v", arg)
+	}
+	return interval, nil
+}
+
+// truncateEpoch floors epoch (expressed in the given unit) to the nearest
+// multiple of interval. Floored division keeps pre-1970 negative epochs
+// aligned on interval boundaries. Intervals smaller than the unit are a no-op.
+func truncateEpoch(epoch int64, interval time.Duration, unit time.Duration) int64 {
+	d := int64(interval / unit)
+	if d <= 0 {
+		return epoch
+	}
+	r := epoch % d
+	if r < 0 {
+		r += d
+	}
+	return epoch - r
+}
+
+// truncateEpochFrom truncates a From epoch: floor to the interval boundary,
+// then advance one interval so the result is never earlier than the original
+// epoch and the truncated range stays inside the dashboard's time range.
+func truncateEpochFrom(epoch int64, interval time.Duration, unit time.Duration) int64 {
+	d := int64(interval / unit)
+	if d <= 0 {
+		return epoch
+	}
+	return truncateEpoch(epoch, interval, unit) + d
+}
+
 func (m *mySQLMacroEngine) evaluateMacro(timeRange backend.TimeRange, query *backend.DataQuery, name string, args []string) (string, error) {
 	switch name {
 	case "__timeEpoch", "__time":
@@ -156,14 +208,28 @@ func (m *mySQLMacroEngine) evaluateMacro(timeRange backend.TimeRange, query *bac
 		if len(args) == 0 {
 			return "", fmt.Errorf("missing time column argument for macro %v", name)
 		}
-		if timeRange.From.UTC().Unix() < 0 {
-			return fmt.Sprintf("%s BETWEEN DATE_ADD(FROM_UNIXTIME(0), INTERVAL %d SECOND) AND FROM_UNIXTIME(%d)", args[0], timeRange.From.UTC().Unix(), timeRange.To.UTC().Unix()), nil
+		trunc, err := parseTruncator(name, argAt(args, 1))
+		if err != nil {
+			return "", err
 		}
-		return fmt.Sprintf("%s BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d)", args[0], timeRange.From.UTC().Unix(), timeRange.To.UTC().Unix()), nil
+		from := truncateEpoch(timeRange.From.UTC().Unix(), trunc, time.Second)
+		to := truncateEpoch(timeRange.To.UTC().Unix(), trunc, time.Second)
+		if from < 0 {
+			return fmt.Sprintf("%s BETWEEN DATE_ADD(FROM_UNIXTIME(0), INTERVAL %d SECOND) AND FROM_UNIXTIME(%d)", args[0], from, to), nil
+		}
+		return fmt.Sprintf("%s BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d)", args[0], from, to), nil
 	case "__timeFrom":
-		return fmt.Sprintf("FROM_UNIXTIME(%d)", timeRange.From.UTC().Unix()), nil
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("FROM_UNIXTIME(%d)", truncateEpoch(timeRange.From.UTC().Unix(), trunc, time.Second)), nil
 	case "__timeTo":
-		return fmt.Sprintf("FROM_UNIXTIME(%d)", timeRange.To.UTC().Unix()), nil
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("FROM_UNIXTIME(%d)", truncateEpoch(timeRange.To.UTC().Unix(), trunc, time.Second)), nil
 	case "__timeGroup":
 		if len(args) < 2 {
 			return "", fmt.Errorf("macro %v needs time column and interval", name)
@@ -192,16 +258,48 @@ func (m *mySQLMacroEngine) evaluateMacro(timeRange backend.TimeRange, query *bac
 		if len(args) == 0 {
 			return "", fmt.Errorf("missing time column argument for macro %v", name)
 		}
-		return fmt.Sprintf("%s >= %d AND %s <= %d", args[0], timeRange.From.UTC().Unix(), args[0], timeRange.To.UTC().Unix()), nil
+		trunc, err := parseTruncator(name, argAt(args, 1))
+		if err != nil {
+			return "", err
+		}
+		from := truncateEpoch(timeRange.From.UTC().Unix(), trunc, time.Second)
+		to := truncateEpoch(timeRange.To.UTC().Unix(), trunc, time.Second)
+		return fmt.Sprintf("%s >= %d AND %s <= %d", args[0], from, args[0], to), nil
+	case "__unixEpochFrom":
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%d", truncateEpoch(timeRange.From.UTC().Unix(), trunc, time.Second)), nil
+	case "__unixEpochTo":
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%d", truncateEpoch(timeRange.To.UTC().Unix(), trunc, time.Second)), nil
 	case "__unixEpochNanoFilter":
 		if len(args) == 0 {
 			return "", fmt.Errorf("missing time column argument for macro %v", name)
 		}
-		return fmt.Sprintf("%s >= %d AND %s <= %d", args[0], timeRange.From.UTC().UnixNano(), args[0], timeRange.To.UTC().UnixNano()), nil
+		trunc, err := parseTruncator(name, argAt(args, 1))
+		if err != nil {
+			return "", err
+		}
+		from := truncateEpoch(timeRange.From.UTC().UnixNano(), trunc, time.Nanosecond)
+		to := truncateEpoch(timeRange.To.UTC().UnixNano(), trunc, time.Nanosecond)
+		return fmt.Sprintf("%s >= %d AND %s <= %d", args[0], from, args[0], to), nil
 	case "__unixEpochNanoFrom":
-		return fmt.Sprintf("%d", timeRange.From.UTC().UnixNano()), nil
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%d", truncateEpoch(timeRange.From.UTC().UnixNano(), trunc, time.Nanosecond)), nil
 	case "__unixEpochNanoTo":
-		return fmt.Sprintf("%d", timeRange.To.UTC().UnixNano()), nil
+		trunc, err := parseTruncator(name, argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%d", truncateEpoch(timeRange.To.UTC().UnixNano(), trunc, time.Nanosecond)), nil
 	case "__unixEpochGroup":
 		if len(args) < 2 {
 			return "", fmt.Errorf("macro %v needs time column and interval and optional fill value", name)
