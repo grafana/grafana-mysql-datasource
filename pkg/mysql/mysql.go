@@ -41,7 +41,7 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 		cfg := config.GrafanaConfigFromContext(ctx)
 		sqlCfg, err := cfg.SQL()
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 		jsonData := sqleng.JsonData{
 			MaxOpenConns:            sqlCfg.DefaultMaxOpenConns,
@@ -53,7 +53,7 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 
 		err = json.Unmarshal(settings.JSONData, &jsonData)
 		if err != nil {
-			return nil, fmt.Errorf("error reading settings: %w", err)
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 
 		database := jsonData.Database
@@ -79,20 +79,20 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 
 		proxyClient, err := settings.ProxyClient(ctx)
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 
 		// register the secure socks proxy dialer context, if enabled
 		if proxyClient.SecureSocksProxyEnabled() {
 			dialer, err := proxyClient.NewSecureSocksProxyContextDialer()
 			if err != nil {
-				return nil, err
+				return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 			}
 			// UID is only unique per org, the only way to ensure uniqueness is to do it by connection information
 			uniqueIdentifier := dsInfo.User + dsInfo.DecryptedSecureJSONData["password"] + dsInfo.URL + dsInfo.Database
 			protocol, err = registerProxyDialerContext(protocol, uniqueIdentifier, dialer)
 			if err != nil {
-				return nil, err
+				return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 			}
 		}
 
@@ -110,18 +110,18 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 
 		opts, err := settings.HTTPClientOptions(ctx)
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 
 		tlsConfig, err := sdkhttpclient.GetTLSConfig(opts)
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryTLS, instanceTLSErrorMessage)
 		}
 
 		if tlsConfig.RootCAs != nil || len(tlsConfig.Certificates) > 0 {
 			tlsConfigString := fmt.Sprintf("ds%d", settings.ID)
 			if err := mysql.RegisterTLSConfig(tlsConfigString, tlsConfig); err != nil {
-				return nil, err
+				return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryTLS, instanceTLSErrorMessage)
 			}
 			cnnstr += "&tls=" + tlsConfigString
 		} else if tlsConfig.InsecureSkipVerify {
@@ -141,7 +141,7 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 
 		userFacingDefaultError, err := cfg.UserFacingDefaultError()
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 
 		rowTransformer := mysqlQueryResultTransformer{
@@ -150,7 +150,7 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 
 		db, err := sql.Open("mysql", cnnstr)
 		if err != nil {
-			return nil, err
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 		}
 
 		db.SetMaxOpenConns(config.DSInfo.JsonData.MaxOpenConns)

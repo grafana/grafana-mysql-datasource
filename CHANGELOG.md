@@ -1,5 +1,10 @@
 # Changelog
 
+## 13.1.0
+
+- Categorize MySQL health check errors and provide actionable connection guidance ([#133](https://github.com/grafana/grafana-mysql-datasource/pull/133))
+- Add a dispatch-only caller for the bundled image pipeline ([#137](https://github.com/grafana/grafana-mysql-datasource/pull/137))
+
 ## 13.0.3
 
 - Bump go v1.26.7 and grafana-plugin-sdk-go v0.296.4 and update backend dependencies 

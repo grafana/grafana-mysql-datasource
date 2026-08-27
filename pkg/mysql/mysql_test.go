@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/handlertest"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/config"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -34,6 +35,155 @@ func (h *testQueryHandler) QueryData(ctx context.Context, req *backend.QueryData
 		return nil, err
 	}
 	return i.(*sqleng.DataSourceHandler).QueryData(ctx, req)
+}
+
+func TestNewInstanceSettingsCategorizesConstructionErrors(t *testing.T) {
+	cfg := config.NewGrafanaCfg(map[string]string{
+		config.SQLMaxOpenConnsDefault:           "0",
+		config.SQLMaxIdleConnsDefault:           "2",
+		config.SQLMaxConnLifetimeSecondsDefault: "14400",
+		config.SQLRowLimit:                      "1000000",
+		config.UserFacingDefaultError:           "",
+	})
+	ctx := config.WithGrafanaConfig(context.Background(), cfg)
+	factory := NewInstanceSettings(backend.NewLoggerWith("logger", "mysql.construction.test"))
+
+	tests := []struct {
+		name           string
+		settings       backend.DataSourceInstanceSettings
+		category       sqleng.HealthErrorCategory
+		message        string
+		unexpectedText string
+	}{
+		{
+			name: "invalid JSON settings",
+			settings: backend.DataSourceInstanceSettings{
+				JSONData: []byte(`{"allowCleartextPasswords":"invalid"}`),
+			},
+			category:       sqleng.HealthErrorCategoryConfig,
+			message:        instanceConfigErrorMessage,
+			unexpectedText: "allowCleartextPasswords",
+		},
+		{
+			name: "invalid TLS CA certificate",
+			settings: backend.DataSourceInstanceSettings{
+				ID:       1001,
+				URL:      "localhost:3306",
+				User:     "grafana",
+				Database: "testdata",
+				JSONData: []byte(`{"tlsAuthWithCACert":true}`),
+				DecryptedSecureJSONData: map[string]string{
+					"password":  "grafana",
+					"tlsCACert": "not a certificate",
+				},
+			},
+			category:       sqleng.HealthErrorCategoryTLS,
+			message:        instanceTLSErrorMessage,
+			unexpectedText: "not a certificate",
+		},
+		{
+			name: "invalid DSN database name",
+			settings: backend.DataSourceInstanceSettings{
+				ID:       1002,
+				URL:      "localhost:3306",
+				User:     "grafana",
+				Database: "%invalid",
+				JSONData: []byte(`{}`),
+				DecryptedSecureJSONData: map[string]string{
+					"password": "grafana",
+				},
+			},
+			category:       sqleng.HealthErrorCategoryConfig,
+			message:        instanceConfigErrorMessage,
+			unexpectedText: "%invalid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instance, err := factory(ctx, tt.settings)
+
+			require.Nil(t, instance)
+			require.EqualError(t, err, fmt.Sprintf("[%s] %s", tt.category, tt.message))
+			require.NotContains(t, err.Error(), tt.unexpectedText)
+		})
+	}
+}
+
+func TestNewInstanceSettingsSanitizesGrafanaConfigurationErrors(t *testing.T) {
+	tests := []struct {
+		name           string
+		cfg            *config.GrafanaCfg
+		unexpectedText string
+	}{
+		{
+			name: "invalid SQL defaults",
+			cfg: config.NewGrafanaCfg(map[string]string{
+				config.SQLMaxOpenConnsDefault: "invalid",
+			}),
+			unexpectedText: "SQLDatasourceMaxOpenConnsDefault",
+		},
+		{
+			name: "missing user-facing fallback",
+			cfg: config.NewGrafanaCfg(map[string]string{
+				config.SQLMaxOpenConnsDefault:           "0",
+				config.SQLMaxIdleConnsDefault:           "2",
+				config.SQLMaxConnLifetimeSecondsDefault: "14400",
+				config.SQLRowLimit:                      "1000000",
+			}),
+			unexpectedText: "UserFacingDefaultError",
+		},
+	}
+
+	factory := NewInstanceSettings(backend.NewLoggerWith("logger", "mysql.construction.test"))
+	settings := backend.DataSourceInstanceSettings{
+		URL:      "localhost:3306",
+		User:     "grafana",
+		Database: "testdata",
+		JSONData: []byte(`{}`),
+		DecryptedSecureJSONData: map[string]string{
+			"password": "grafana",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instance, err := factory(config.WithGrafanaConfig(context.Background(), tt.cfg), settings)
+
+			require.Nil(t, instance)
+			require.EqualError(t, err, fmt.Sprintf("[%s] %s", sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage))
+			require.NotContains(t, err.Error(), tt.unexpectedText)
+		})
+	}
+}
+
+func TestNewInstanceSettingsMarksConstructionErrorsAsDownstream(t *testing.T) {
+	cfg := config.NewGrafanaCfg(map[string]string{
+		config.SQLMaxOpenConnsDefault:           "0",
+		config.SQLMaxIdleConnsDefault:           "2",
+		config.SQLMaxConnLifetimeSecondsDefault: "14400",
+		config.SQLRowLimit:                      "1000000",
+		config.UserFacingDefaultError:           "",
+	})
+	factory := NewInstanceSettings(backend.NewLoggerWith("logger", "mysql.construction.test"))
+	middlewareTest := handlertest.NewHandlerMiddlewareTest(t)
+	var checkHealthContext context.Context
+	middlewareTest.TestHandler.CheckHealthFunc = func(ctx context.Context, _ *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+		checkHealthContext = ctx
+		_, err := factory(ctx, backend.DataSourceInstanceSettings{
+			JSONData: []byte(`{"allowCleartextPasswords":"invalid"}`),
+		})
+		require.Error(t, err)
+		return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: err.Error()}, nil
+	}
+
+	result, err := middlewareTest.MiddlewareHandler.CheckHealth(context.Background(), &backend.CheckHealthRequest{
+		PluginContext: backend.PluginContext{GrafanaConfig: cfg},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, backend.HealthStatusError, result.Status)
+	require.Equal(t, backend.ErrorSourceDownstream, backend.ErrorSourceFromContext(checkHealthContext))
 }
 
 // To run this test, set runMySqlTests=true
