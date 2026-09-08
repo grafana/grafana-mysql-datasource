@@ -1,6 +1,6 @@
 {
   "name": "mysql",
-  "version": "13.1.0",
+  "version": "13.1.1",
   "description": "MySQL datasource for Grafana",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
