@@ -1,5 +1,9 @@
 # Changelog
 
+## 13.1.2
+
+- Resolve high-severity CVEs in `google.golang.org/grpc`, `browserslist`, `fast-uri`, and `@opentelemetry/core` ([#143](https://github.com/grafana/grafana-mysql-datasource/pull/143), [#117](https://github.com/grafana/grafana-mysql-datasource/pull/117))
+
 ## 13.1.1
 
 - Fixes CVE-2026-19475 ([#142](https://github.com/grafana/grafana-mysql-datasource/pull/142))
