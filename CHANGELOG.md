@@ -1,5 +1,9 @@
 # Changelog
 
+## 13.1.3
+
+- Fix security vulnerabilities (CVE-2026-53668, CVE-2026-84375)
+
 ## 13.1.2
 
 - Resolve high-severity CVEs in `google.golang.org/grpc`, `browserslist`, `fast-uri`, and `@opentelemetry/core` ([#143](https://github.com/grafana/grafana-mysql-datasource/pull/143), [#117](https://github.com/grafana/grafana-mysql-datasource/pull/117))
