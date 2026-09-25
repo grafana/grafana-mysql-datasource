@@ -28,5 +28,6 @@ jobs:
       id-token: write
       pull-requests: read
     with:
-      go-version: "1.26.5"
+      # cd-dev requires this input; an empty value makes plugin-ci-workflows use go.mod.
+      go-version: ""
       golangci-lint-version: "2.11.0"
