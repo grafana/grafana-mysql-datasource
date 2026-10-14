@@ -9,6 +9,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/proxy"
+
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
 
 type testDialer struct {
@@ -60,5 +62,52 @@ func TestMySQLProxyDialer(t *testing.T) {
 		_, err = conn.Connect(context.Background())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "test-dialer: DialContext is not functional")
+	})
+}
+
+func TestCreateProxyIdentifier(t *testing.T) {
+	dsInfo := sqleng.DataSourceInfo{
+		User:                    "user",
+		URL:                     "localhost:3306",
+		Database:                "db",
+		UID:                     "ds-uid",
+		DecryptedSecureJSONData: map[string]string{"password": "secret"},
+	}
+
+	t.Run("includes connection info, stack and PDC network", func(t *testing.T) {
+		id := createProxyIdentifier(dsInfo, "stacks-123", "network-1")
+		require.Equal(t, "usersecretlocalhost:3306dbstacks-123network-1", id)
+	})
+
+	t.Run("falls back to datasource UID when proxy username is empty", func(t *testing.T) {
+		id := createProxyIdentifier(dsInfo, "stacks-123", "")
+		require.Equal(t, "usersecretlocalhost:3306dbstacks-123ds-uid", id)
+	})
+
+	t.Run("differs across stacks with identical connection info", func(t *testing.T) {
+		require.NotEqual(t,
+			createProxyIdentifier(dsInfo, "stacks-123", "network-1"),
+			createProxyIdentifier(dsInfo, "stacks-456", "network-1"),
+		)
+	})
+
+	t.Run("differs across PDC networks with identical connection info", func(t *testing.T) {
+		require.NotEqual(t,
+			createProxyIdentifier(dsInfo, "stacks-123", "network-1"),
+			createProxyIdentifier(dsInfo, "stacks-123", "network-2"),
+		)
+	})
+
+	t.Run("is stable for identical inputs", func(t *testing.T) {
+		require.Equal(t,
+			createProxyIdentifier(dsInfo, "stacks-123", "network-1"),
+			createProxyIdentifier(dsInfo, "stacks-123", "network-1"),
+		)
+	})
+
+	t.Run("handles missing stack and password", func(t *testing.T) {
+		info := dsInfo
+		info.DecryptedSecureJSONData = nil
+		require.Equal(t, "userlocalhost:3306dbds-uid", createProxyIdentifier(info, "", ""))
 	})
 }

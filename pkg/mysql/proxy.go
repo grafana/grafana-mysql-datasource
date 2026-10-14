@@ -8,7 +8,21 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/net/proxy"
+
+	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
+
+// createProxyIdentifier returns an identifier that is unique per connection, stack and PDC network.
+// UID is only unique per org, the only way to ensure uniqueness is to do it by connection information.
+// The stackID is the request namespace (e.g. "stacks-<id>"). The PDC network is selected by the secure
+// socks proxy username, which defaults to the datasource UID, matching the SDK's ProxyOptions.
+func createProxyIdentifier(dsInfo sqleng.DataSourceInfo, stackID string, secureDSProxyUsername string) string {
+	pdcNetworkID := secureDSProxyUsername
+	if pdcNetworkID == "" {
+		pdcNetworkID = dsInfo.UID
+	}
+	return dsInfo.User + dsInfo.DecryptedSecureJSONData["password"] + dsInfo.URL + dsInfo.Database + stackID + pdcNetworkID
+}
 
 // registerProxyDialerContext registers a new dialer context to be used by mysql when the proxy network is
 // specified in the connection string
