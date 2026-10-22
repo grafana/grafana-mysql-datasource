@@ -1520,3 +1520,43 @@ func mySQLTestDBConnStr() string {
 	}
 	return fmt.Sprintf("grafana:password@tcp(%s:%s)/grafana_ds_tests?collation=utf8mb4_unicode_ci&sql_mode=ANSI_QUOTES&parseTime=true&loc=UTC", host, port)
 }
+
+func TestValidateHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		wantErr bool
+	}{
+		{"hostname", "localhost", false},
+		{"hostname with port", "localhost:3306", false},
+		{"FQDN with port", "db.example.com:3306", false},
+		{"IPv4", "127.0.0.1", false},
+		{"IPv4 with port", "127.0.0.1:3306", false},
+		{"IPv6", "::1", false},
+		{"IPv6 with port", "[::1]:3306", false},
+		{"unix socket", "/var/run/mysqld/mysqld.sock", false},
+		{"trimmed whitespace", "  localhost:3306  ", false},
+		{"empty", "", true},
+		{"whitespace only", "   ", true},
+		{"http URL", "http://zabbix.local:8080/zabbix/api_jsonrpc.php", true},
+		{"https URL", "https://db.example.com", true},
+		{"scheme without path", "http://localhost:3306", true},
+		{"protocol-relative", "//example.com/db", true},
+		{"hostname with path", "localhost:3306/mydb", true},
+		{"IP with path", "127.0.0.1/mydb", true},
+		{"query string", "localhost:3306?x=1", true},
+		{"fragment", "localhost:3306#frag", true},
+		{"embedded credentials", "user:pass@host", true},
+		{"backslash path", "host\\path", true},
+		{"socket with query", "/socket?x=1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateHost(tt.host)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateHost(%q) error = %v, wantErr %v", tt.host, err, tt.wantErr)
+			}
+		})
+	}
+}

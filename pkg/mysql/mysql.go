@@ -36,6 +36,34 @@ func characterEscape(s string, escapeChar string) string {
 	return strings.ReplaceAll(s, escapeChar, url.QueryEscape(escapeChar))
 }
 
+// validateHost rejects URLs and credentials in the host field — MySQL DSN format
+// is "user:pass@tcp(host:port)/db", so a URL with a path or credentials drags
+// the driver into resolving the whole string as a DNS name.
+func validateHost(host string) error {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return fmt.Errorf("host cannot be empty")
+	}
+	if strings.HasPrefix(host, "//") {
+		return fmt.Errorf("host %q is a URL, not a hostname", host)
+	}
+	if strings.HasPrefix(host, "/") {
+		// Unix socket path; only reject query/fragment that would corrupt DSN parsing.
+		if strings.ContainsAny(host, "?#") {
+			return fmt.Errorf("host %q must not contain a query or fragment", host)
+		}
+		return nil
+	}
+	if strings.Contains(host, "://") || strings.Contains(host, "//") {
+		return fmt.Errorf("host %q is a URL, not a hostname", host)
+	}
+	// Reject anything that is not "host" or "host:port".
+	if strings.ContainsAny(host, "/?#@\\") {
+		return fmt.Errorf("host %q must not contain a path, query, or credentials", host)
+	}
+	return nil
+}
+
 func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 	return func(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 		cfg := config.GrafanaConfigFromContext(ctx)
@@ -72,9 +100,15 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 			DecryptedSecureJSONData: settings.DecryptedSecureJSONData,
 		}
 
+		dsInfo.URL = strings.TrimSpace(dsInfo.URL)
+
 		protocol := "tcp"
 		if strings.HasPrefix(dsInfo.URL, "/") {
 			protocol = "unix"
+		}
+
+		if err := validateHost(dsInfo.URL); err != nil {
+			return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, err.Error())
 		}
 
 		proxyClient, err := settings.ProxyClient(ctx)
