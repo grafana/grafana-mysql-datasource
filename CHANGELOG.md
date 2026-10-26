@@ -1,5 +1,9 @@
 # Changelog
 
+## 13.1.5
+
+- Bump backend dependency
+
 ## 13.1.4
 
 - Fix security vulnerabilities (CVE-2026-102276, CVE-2026-102278, CVE-2026-102990)
