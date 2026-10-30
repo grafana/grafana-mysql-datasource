@@ -19,13 +19,13 @@ services:
     cap_add:
       - SYS_PTRACE
     volumes:
-      - ../dist:/var/lib/grafana/plugins/grafana-mysql-datasource
+      - ../dist:/var/lib/grafana/plugins/mysql
       - ../provisioning:/etc/grafana/provisioning
-      - ..:/root/grafana-mysql-datasource
+      - ..:/root/mysql
 
     environment:
       NODE_ENV: development
-      GF_LOG_FILTERS: plugin.grafana-mysql-datasource:debug
+      GF_LOG_FILTERS: plugin.mysql:debug
       GF_LOG_LEVEL: debug
       GF_DATAPROXY_LOGGING: 1
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: grafana-mysql-datasource
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: mysql
