@@ -1,4 +1,3 @@
-import { selectors } from '@grafana/e2e-selectors';
 import { test, expect } from '@grafana/plugin-e2e';
 
 import { normalTableName } from './mocks/mysql.mocks';
@@ -15,7 +14,7 @@ test.describe(
     tag: '@plugins',
   },
   () => {
-    test('visual query builder should handle macros', async ({ explorePage, page }) => {
+    test('visual query builder should handle macros', async ({ explorePage, page, selectors }) => {
       await explorePage.getByGrafanaSelector(selectors.components.SQLQueryEditor.headerTableSelector).click();
       await page.getByText(normalTableName, { exact: true }).click();
 
@@ -55,7 +54,7 @@ test.describe(
       );
     });
 
-    test('visual query builder should handle time filter macro', async ({ explorePage, page }) => {
+    test('visual query builder should handle time filter macro', async ({ explorePage, page, selectors }) => {
       await explorePage.getByGrafanaSelector(selectors.components.SQLQueryEditor.headerTableSelector).click();
       await page.getByText(normalTableName, { exact: true }).click();
 
@@ -104,7 +103,11 @@ test.describe(
       );
     });
 
-    test('visual query builder should not crash when filter is set to select_any_in', async ({ explorePage, page }) => {
+    test('visual query builder should not crash when filter is set to select_any_in', async ({
+      explorePage,
+      page,
+      selectors,
+    }) => {
       const queryParams = new URLSearchParams();
       queryParams.set('schemaVersion', '1');
       queryParams.set('orgId', '1');
