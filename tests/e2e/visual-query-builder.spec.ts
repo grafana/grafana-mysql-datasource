@@ -4,6 +4,9 @@ import { test, expect } from '@grafana/plugin-e2e';
 import { normalTableName } from './mocks/mysql.mocks';
 import { mockDataSourceRequest } from './utils';
 
+const DS_UID = 'mysql-ds-m'; // Cloud and local datasource use the same UID
+const DS_DATABASE = process.env.DS_INSTANCE_DATABASE ?? 'testdata';
+
 test.beforeEach(mockDataSourceRequest);
 
 test.describe(
@@ -48,7 +51,7 @@ test.describe(
       await expect(
         explorePage.getByGrafanaSelector(selectors.components.CodeEditor.container).getByRole('textbox')
       ).toHaveValue(
-        `SELECT\n  $__timeGroupAlias(createdAt, $__interval),\n  AVG(\`bigint\`)\nFROM\n  grafana.normalTable\nLIMIT\n  50`
+        `SELECT\n  $__timeGroupAlias(createdAt, $__interval),\n  AVG(\`bigint\`)\nFROM\n  ${DS_DATABASE}.normalTable\nLIMIT\n  50`
       );
     });
 
@@ -83,7 +86,9 @@ test.describe(
       // Validate that the timeFilter macro was added
       await expect(
         explorePage.getByGrafanaSelector(selectors.components.CodeEditor.container).getByRole('textbox')
-      ).toHaveValue(`SELECT\n  createdAt\nFROM\n  grafana.normalTable\nWHERE\n  $__timeFilter(createdAt)\nLIMIT\n  50`);
+      ).toHaveValue(
+        `SELECT\n  createdAt\nFROM\n  ${DS_DATABASE}.normalTable\nWHERE\n  $__timeFilter(createdAt)\nLIMIT\n  50`
+      );
 
       // Validate that the timeFilter macro was removed when changed to equals operator
       await explorePage.getByGrafanaSelector(selectors.components.SQLQueryEditor.filterOperator).click();
@@ -94,7 +99,9 @@ test.describe(
 
       await expect(
         explorePage.getByGrafanaSelector(selectors.components.CodeEditor.container).getByRole('textbox')
-      ).not.toHaveValue(`SELECT\n  createdAt\nFROM\n  grafana.normalTable\nWHERE\n  createdAt = NULL\nLIMIT\n  50`);
+      ).not.toHaveValue(
+        `SELECT\n  createdAt\nFROM\n  ${DS_DATABASE}.normalTable\nWHERE\n  createdAt = NULL\nLIMIT\n  50`
+      );
     });
 
     test('visual query builder should not crash when filter is set to select_any_in', async ({ explorePage, page }) => {
@@ -103,16 +110,16 @@ test.describe(
       queryParams.set('orgId', '1');
       const panes = {
         mmm: {
-          datasource: 'P4FDCC188E688367F',
+          datasource: DS_UID,
           queries: [
             {
               refId: 'A',
               datasource: {
                 type: 'mysql',
-                uid: 'P4FDCC188E688367F',
+                uid: DS_UID,
               },
               format: 'table',
-              rawSql: "SELECT * FROM grafana.normalTable WHERE name IN ('a') LIMIT 50 ",
+              rawSql: `SELECT * FROM ${DS_DATABASE}.normalTable WHERE name IN ('a') LIMIT 50 `,
               editorMode: 'builder',
               sql: {
                 columns: [
@@ -155,7 +162,7 @@ test.describe(
                 },
                 whereString: "name IN ('a')",
               },
-              dataset: 'grafana',
+              dataset: DS_DATABASE,
               table: 'normalTable',
             },
           ],
@@ -168,7 +175,7 @@ test.describe(
       // Validate the query
       await expect(
         explorePage.getByGrafanaSelector(selectors.components.CodeEditor.container).getByRole('textbox')
-      ).toHaveValue(`SELECT\n  *\nFROM\n  grafana.normalTable\nWHERE\n  name IN ('a')\nLIMIT\n  50`);
+      ).toHaveValue(`SELECT\n  *\nFROM\n  ${DS_DATABASE}.normalTable\nWHERE\n  name IN ('a')\nLIMIT\n  50`);
     });
   }
 );

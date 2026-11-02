@@ -11,6 +11,7 @@ jobs:
     secrets: inherit
     with:
       repo-secrets: |
+        DS_INSTANCE_NAME=mysql:name
         DS_INSTANCE_URL=mysql:url
         DS_INSTANCE_PASSWORD=mysql:secure_password
         DS_INSTANCE_USERNAME=mysql:user

@@ -4,8 +4,10 @@ import { type PluginFixture } from '@grafana/plugin-e2e';
 
 import { datasetResponse, fieldsResponse, tablesResponse } from './mocks/mysql.mocks';
 
+const DS_NAME = process.env.DS_INSTANCE_NAME ?? 'mysql';
+
 export async function mockDataSourceRequest({ context, explorePage, selectors }: PlaywrightTestArgs & PluginFixture) {
-  await explorePage.datasource.set('gdev-mysql');
+  await explorePage.datasource.set(DS_NAME);
   await context.route(selectors.apis.DataSource.queryPattern, async (route, request) => {
     const refId = request.postDataJSON().queries[0].refId;
     if (/fields-.*/g.test(refId)) {
