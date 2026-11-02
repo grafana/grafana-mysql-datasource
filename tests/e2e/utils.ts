@@ -7,7 +7,6 @@ import { datasetResponse, fieldsResponse, tablesResponse } from './mocks/mysql.m
 const DS_NAME = process.env.DS_INSTANCE_NAME ?? 'mysql';
 
 export async function mockDataSourceRequest({ context, explorePage, selectors }: PlaywrightTestArgs & PluginFixture) {
-  await explorePage.datasource.set(DS_NAME);
   await context.route(selectors.apis.DataSource.queryPattern, async (route, request) => {
     const refId = request.postDataJSON().queries[0].refId;
     if (/fields-.*/g.test(refId)) {
@@ -22,4 +21,5 @@ export async function mockDataSourceRequest({ context, explorePage, selectors }:
         return route.continue();
     }
   });
+  await explorePage.datasource.set(DS_NAME);
 }
