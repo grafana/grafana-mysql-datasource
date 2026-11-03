@@ -88,8 +88,8 @@ func NewInstanceSettings(logger log.Logger) datasource.InstanceFactoryFunc {
 			if err != nil {
 				return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
 			}
-			// UID is only unique per org, the only way to ensure uniqueness is to do it by connection information
-			uniqueIdentifier := dsInfo.User + dsInfo.DecryptedSecureJSONData["password"] + dsInfo.URL + dsInfo.Database
+			stackID := backend.PluginConfigFromContext(ctx).Namespace
+			uniqueIdentifier := createProxyIdentifier(dsInfo, stackID, jsonData.SecureDSProxyUsername)
 			protocol, err = registerProxyDialerContext(protocol, uniqueIdentifier, dialer)
 			if err != nil {
 				return nil, categorizedInstanceError(ctx, sqleng.HealthErrorCategoryConfig, instanceConfigErrorMessage)
