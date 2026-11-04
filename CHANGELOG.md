@@ -1,5 +1,11 @@
 # Changelog
 
+## 13.1.7
+
+- Fix proxy identifier across private networks
+- Chore: Add Linux s390x and Windows arm64 build targets
+- Chore: Add E2E tests from core Grafana
+
 ## 13.1.6
 
 - Fix security vulnerabilities (GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr, CVE-2026-93749, CVE-2023-54404)
