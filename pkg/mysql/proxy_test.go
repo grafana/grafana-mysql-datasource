@@ -30,7 +30,8 @@ var _ proxy.ContextDialer = (&testDialer{})
 func TestMySQLProxyDialer(t *testing.T) {
 	protocol := "tcp"
 	dbURL := "localhost:5432"
-	network, err := registerProxyDialerContext(protocol, dbURL, &testDialer{})
+	proxyIdentifier := createProxyIdentifier(sqleng.DataSourceInfo{URL: dbURL}, "stacks-123", "network-1")
+	network, err := registerProxyDialerContext(protocol, proxyIdentifier, &testDialer{})
 	require.NoError(t, err)
 	driver := mysql.MySQLDriver{}
 	cnnstr := fmt.Sprintf("test:test@%s(%s)/db",
@@ -43,7 +44,8 @@ func TestMySQLProxyDialer(t *testing.T) {
 	})
 
 	t.Run("Multiple networks can be created", func(t *testing.T) {
-		network, err := registerProxyDialerContext(protocol, dbURL, &testDialer{})
+		otherIdentifier := createProxyIdentifier(sqleng.DataSourceInfo{URL: dbURL}, "stacks-456", "network-1")
+		network, err := registerProxyDialerContext(protocol, otherIdentifier, &testDialer{})
 		require.NoError(t, err)
 		cnnstr2 := fmt.Sprintf("test:test@%s(%s)/db",
 			network,
@@ -74,14 +76,14 @@ func TestCreateProxyIdentifier(t *testing.T) {
 		DecryptedSecureJSONData: map[string]string{"password": "secret"},
 	}
 
-	t.Run("includes connection info, stack and PDC network", func(t *testing.T) {
+	t.Run("hashes connection info, stack and PDC network", func(t *testing.T) {
 		id := createProxyIdentifier(dsInfo, "stacks-123", "network-1")
-		require.Equal(t, "usersecretlocalhost:3306dbstacks-123network-1", id)
+		require.Equal(t, "proxy-87273ae3e47bcae023bec20d731fef0d", id)
 	})
 
 	t.Run("falls back to datasource UID when proxy username is empty", func(t *testing.T) {
 		id := createProxyIdentifier(dsInfo, "stacks-123", "")
-		require.Equal(t, "usersecretlocalhost:3306dbstacks-123ds-uid", id)
+		require.Equal(t, "proxy-6fdc87b3df10c3571c29e1bcbd95e6ff", id)
 	})
 
 	t.Run("differs across stacks with identical connection info", func(t *testing.T) {
@@ -108,6 +110,6 @@ func TestCreateProxyIdentifier(t *testing.T) {
 	t.Run("handles missing stack and password", func(t *testing.T) {
 		info := dsInfo
 		info.DecryptedSecureJSONData = nil
-		require.Equal(t, "userlocalhost:3306dbds-uid", createProxyIdentifier(info, "", ""))
+		require.Equal(t, "proxy-438e80e704b3db2ddef95e8c63e7089c", createProxyIdentifier(info, "", ""))
 	})
 }
