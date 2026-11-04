@@ -12,34 +12,30 @@ import (
 	"github.com/grafana/grafana-mysql-datasource/pkg/mysql/sqleng"
 )
 
-// createProxyIdentifier returns an identifier that is unique per connection, stack and PDC network.
-// UID is only unique per org, the only way to ensure uniqueness is to do it by connection information.
-// The stackID is the request namespace (e.g. "stacks-<id>"). The PDC network is selected by the secure
-// socks proxy username, which defaults to the datasource UID, matching the SDK's ProxyOptions.
+// createProxyIdentifier returns a hashed identifier that is unique per connection, stack and socks proxy
+// network. The identifier is hashed so that it is safe to use as part of a network name, and so that it does
+// not leak the connection details it is built from.
 func createProxyIdentifier(dsInfo sqleng.DataSourceInfo, stackID string, secureDSProxyUsername string) string {
-	pdcNetworkID := secureDSProxyUsername
-	if pdcNetworkID == "" {
-		pdcNetworkID = dsInfo.UID
+	socksProxyNetworkID := secureDSProxyUsername
+	if socksProxyNetworkID == "" {
+		socksProxyNetworkID = dsInfo.UID
 	}
-	return dsInfo.User + dsInfo.DecryptedSecureJSONData["password"] + dsInfo.URL + dsInfo.Database + stackID + pdcNetworkID
+	identifier := dsInfo.User + dsInfo.DecryptedSecureJSONData["password"] + dsInfo.URL + dsInfo.Database + stackID + socksProxyNetworkID
+	return fmt.Sprintf("proxy-%x", md5.Sum([]byte(identifier)))
 }
 
 // registerProxyDialerContext registers a new dialer context to be used by mysql when the proxy network is
 // specified in the connection string
-func registerProxyDialerContext(protocol, cnnstr string, dialer proxy.Dialer) (string, error) {
+func registerProxyDialerContext(protocol, proxyIdentifier string, dialer proxy.Dialer) (string, error) {
 	// the mysqlDialer contains the true network used behind the scenes
 	mysqlDialer, err := getProxyDialerContext(protocol, dialer)
 	if err != nil {
 		return "", err
 	}
 
-	// the dialer context can be updated everytime the datasource is updated
-	// have a unique network per connection string
-	hash := fmt.Sprintf("%x", md5.Sum([]byte(cnnstr)))
-	network := "proxy-" + hash
-	mysql.RegisterDialContext(network, mysqlDialer.DialContext)
+	mysql.RegisterDialContext(proxyIdentifier, mysqlDialer.DialContext)
 
-	return network, nil
+	return proxyIdentifier, nil
 }
 
 // mySQLContextDialer turns a golang proxy driver into a MySQL proxy driver
