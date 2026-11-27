@@ -79,6 +79,21 @@ npm run server
 npm run e2e
 ```
 
+## Data source configuration schema
+
+Edit `pkg/schema/dsconfig.json` when a MySQL setting changes. It describes fields in `root`, `jsonData` and `secureJsonData` and uses the shared SQL engine field pack. Keep its `$schema` tag in sync with the `github.com/grafana/dsconfig/dsconfig` version in `go.mod`.
+
+`pkg/schema/dsconfig_test.go` checks the schema against the MySQL fields of `sqleng.JsonData` in `pkg/mysql/sqleng/sql_engine.go`. Update the test for settings read by the editor or the Grafana SDK. For a new secret, update `SecureKeys`. Update the configuration examples when a connection mode changes.
+
+From the repository root, regenerate the files and run the conformance test:
+
+```shell
+go generate ./pkg/schema
+go test ./pkg/schema
+```
+
+The generated files are `pkg/schema/schema.gen.json`, `pkg/schema/settings.gen.json` and `pkg/schema/settings.examples.gen.json`. The production build copies them and the handwritten schema to `dist/schema/`.
+
 ## Release
 
 You need commit access to the repository to publish a release.

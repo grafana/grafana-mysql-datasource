@@ -1,0 +1,123 @@
+{
+  "spec": {
+    "type": "object",
+    "required": [
+      "url",
+      "user"
+    ],
+    "properties": {
+      "jsonData": {
+        "type": "object",
+        "properties": {
+          "allowCleartextPasswords": {
+            "description": "Allow a MySQL account to authenticate using the cleartext password plugin.",
+            "type": "boolean",
+            "default": false
+          },
+          "connMaxLifetime": {
+            "description": "Maximum connection lifetime in whole seconds. A nonpositive value disables expiry. Defaults to the Grafana SQL connection lifetime.",
+            "type": "number"
+          },
+          "database": {
+            "description": "Default database for queries. If empty, the backend falls back to the legacy root database field.",
+            "type": "string"
+          },
+          "enableSecureSocksProxy": {
+            "description": "Connect through the secure SOCKS proxy configured in Grafana. Use a TCP host and port.",
+            "type": "boolean",
+            "default": false
+          },
+          "keepAlive": {
+            "description": "TCP keep-alive interval for the SOCKS proxy connection, in seconds. The SDK uses whole seconds. Provisioning only.",
+            "type": "number",
+            "default": 30,
+            "x-dsconfig-depends-on": "false"
+          },
+          "maxIdleConns": {
+            "description": "Maximum idle connections, in whole numbers. A nonpositive value keeps none. The pool caps this at a positive Max open limit. Defaults to the Grafana SQL idle limit.",
+            "type": "number",
+            "x-dsconfig-disabled-when": "jsonData_maxIdleConnsAuto == true"
+          },
+          "maxIdleConnsAuto": {
+            "description": "In the editor, copy a changed positive Max open value to Max idle. When this switch is omitted, the editor enables it only if Max open and Max idle are both unset. Provisioning uses the stored maxIdleConns value.",
+            "type": "boolean"
+          },
+          "maxOpenConns": {
+            "description": "Maximum number of open database connections, in whole numbers. A nonpositive value means unlimited. Defaults to the Grafana SQL connection limit.",
+            "type": "number"
+          },
+          "secureSocksProxyUsername": {
+            "description": "SOCKS proxy username. Defaults to the data source UID. Provisioning only.",
+            "type": "string",
+            "x-dsconfig-depends-on": "false"
+          },
+          "serverName": {
+            "description": "Override the server name used for TLS verification when a CA or client certificate is supplied. Provisioning only.",
+            "type": "string",
+            "x-dsconfig-depends-on": "false"
+          },
+          "timeInterval": {
+            "description": "Lower limit for the automatic query interval, for example 1m for data written every minute.",
+            "type": "string",
+            "default": "1m"
+          },
+          "timeout": {
+            "description": "Time in seconds to establish the SOCKS proxy connection. The SDK uses whole seconds. Provisioning only.",
+            "type": "number",
+            "default": 30,
+            "x-dsconfig-depends-on": "false"
+          },
+          "timezone": {
+            "description": "Set the MySQL session time zone, such as Europe/Berlin or +02:00. Leave empty to use the database default.",
+            "type": "string"
+          },
+          "tlsAuth": {
+            "description": "Present a client certificate and matching private key to MySQL for mutual TLS.",
+            "type": "boolean",
+            "default": false
+          },
+          "tlsAuthWithCACert": {
+            "description": "Verify the MySQL server certificate against a supplied CA certificate.",
+            "type": "boolean",
+            "default": false
+          },
+          "tlsSkipVerify": {
+            "description": "Use TLS without verifying the MySQL server certificate or host name.",
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "url": {
+        "description": "MySQL host with an optional TCP port (default 3306), or an absolute path to a local Unix socket. With Private Data Source Connect, use a host and explicit port.",
+        "type": "string"
+      },
+      "user": {
+        "description": "MySQL account used to run queries.",
+        "type": "string"
+      }
+    }
+  },
+  "secureValues": [
+    {
+      "key": "password",
+      "description": "Password for the MySQL account. Omit it when the account authenticates without a password."
+    },
+    {
+      "key": "tlsClientCert",
+      "description": "PEM client certificate paired with the TLS client key."
+    },
+    {
+      "key": "tlsCACert",
+      "description": "PEM CA certificate used to verify the MySQL server."
+    },
+    {
+      "key": "tlsClientKey",
+      "description": "PEM private key paired with the TLS client certificate."
+    },
+    {
+      "key": "secureSocksProxyPassword",
+      "description": "Password for the SOCKS proxy. Provisioning only."
+    }
+  ]
+}

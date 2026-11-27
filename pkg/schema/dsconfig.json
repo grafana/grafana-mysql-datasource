@@ -1,0 +1,312 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/dsconfig/refs/tags/dsconfig/v0.0.13/dsconfig/schema.json",
+  "schemaVersion": "v1",
+  "pluginType": "mysql",
+  "pluginName": "MySQL",
+  "docURL": "https://grafana.com/docs/grafana/latest/datasources/mysql/configure/",
+  "baseFields": [
+    {
+      "from": "sqleng_settings",
+      "exclude": [
+        "sqleng_settings.connectionTimeout",
+        "sqleng_settings.tlsConfigurationMethod",
+        "sqleng_settings.sslRootCertFile",
+        "sqleng_settings.sslCertFile",
+        "sqleng_settings.sslKeyFile",
+        "sqleng_settings.servername"
+      ],
+      "patch": {
+        "sqleng_settings.url": {
+          "description": "MySQL host with an optional TCP port (default 3306), or an absolute path to a local Unix socket. With Private Data Source Connect, use a host and explicit port.",
+          "placeholder": "localhost:3306"
+        },
+        "sqleng_settings.user": {
+          "description": "MySQL account used to run queries.",
+          "required": true
+        },
+        "sqleng_settings.password": {
+          "description": "Password for the MySQL account. Omit it when the account authenticates without a password."
+        },
+        "sqleng_settings.timeInterval": {
+          "description": "Lower limit for the automatic query interval, for example 1m for data written every minute.",
+          "defaultValue": "1m"
+        },
+        "sqleng_settings.maxOpenConns": {
+          "label": "Max open",
+          "description": "Maximum number of open database connections, in whole numbers. A nonpositive value means unlimited. Defaults to the Grafana SQL connection limit."
+        },
+        "sqleng_settings.connMaxLifetime": {
+          "label": "Max lifetime",
+          "description": "Maximum connection lifetime in whole seconds. A nonpositive value disables expiry. Defaults to the Grafana SQL connection lifetime."
+        },
+        "sqleng_settings.tlsSkipVerify": {
+          "label": "Skip TLS Verification",
+          "description": "Use TLS without verifying the MySQL server certificate or host name.",
+          "defaultValue": false
+        },
+        "sqleng_settings.enableSecureSocksProxy": {
+          "label": "Enabled",
+          "description": "Connect through the secure SOCKS proxy configured in Grafana. Use a TCP host and port.",
+          "defaultValue": false
+        }
+      }
+    }
+  ],
+  "fields": [
+    {
+      "id": "sqleng_settings.database",
+      "key": "database",
+      "label": "Database name",
+      "description": "Default database for queries. If empty, the backend falls back to the legacy root database field.",
+      "valueType": "string",
+      "target": "jsonData",
+      "ui": {
+        "component": "input",
+        "placeholder": "Database"
+      }
+    },
+    {
+      "id": "jsonData_tlsAuth",
+      "key": "tlsAuth",
+      "label": "Use TLS Client Auth",
+      "description": "Present a client certificate and matching private key to MySQL for mutual TLS.",
+      "valueType": "boolean",
+      "target": "jsonData",
+      "defaultValue": false,
+      "ui": {
+        "component": "switch"
+      }
+    },
+    {
+      "id": "jsonData_tlsAuthWithCACert",
+      "key": "tlsAuthWithCACert",
+      "label": "With CA Cert",
+      "description": "Verify the MySQL server certificate against a supplied CA certificate.",
+      "valueType": "boolean",
+      "target": "jsonData",
+      "defaultValue": false,
+      "ui": {
+        "component": "switch"
+      }
+    },
+    {
+      "id": "jsonData_allowCleartextPasswords",
+      "key": "allowCleartextPasswords",
+      "label": "Allow Cleartext Passwords",
+      "description": "Allow a MySQL account to authenticate using the cleartext password plugin.",
+      "valueType": "boolean",
+      "target": "jsonData",
+      "defaultValue": false,
+      "ui": {
+        "component": "switch"
+      }
+    },
+    {
+      "id": "sqleng_settings.tlsClientCert",
+      "key": "tlsClientCert",
+      "label": "TLS/SSL Client Certificate",
+      "description": "PEM client certificate paired with the TLS client key.",
+      "valueType": "string",
+      "target": "secureJsonData",
+      "role": "tls.clientCert",
+      "dependsOn": "jsonData_tlsAuth == true",
+      "ui": {
+        "component": "textarea",
+        "multiline": true,
+        "rows": 7,
+        "placeholder": "-----BEGIN CERTIFICATE-----"
+      },
+      "requiredWhen": "jsonData_tlsAuth == true"
+    },
+    {
+      "id": "sqleng_settings.tlsCACert",
+      "key": "tlsCACert",
+      "label": "TLS/SSL Root Certificate",
+      "description": "PEM CA certificate used to verify the MySQL server.",
+      "valueType": "string",
+      "target": "secureJsonData",
+      "role": "tls.caCert",
+      "dependsOn": "jsonData_tlsAuthWithCACert == true",
+      "ui": {
+        "component": "textarea",
+        "multiline": true,
+        "rows": 7,
+        "placeholder": "-----BEGIN CERTIFICATE-----"
+      },
+      "requiredWhen": "jsonData_tlsAuthWithCACert == true"
+    },
+    {
+      "id": "sqleng_settings.tlsClientKey",
+      "key": "tlsClientKey",
+      "label": "TLS/SSL Client Key",
+      "description": "PEM private key paired with the TLS client certificate.",
+      "valueType": "string",
+      "target": "secureJsonData",
+      "role": "tls.clientKey",
+      "dependsOn": "jsonData_tlsAuth == true",
+      "ui": {
+        "component": "textarea",
+        "multiline": true,
+        "rows": 7,
+        "placeholder": "-----BEGIN RSA PRIVATE KEY-----"
+      },
+      "requiredWhen": "jsonData_tlsAuth == true"
+    },
+    {
+      "id": "jsonData_timezone",
+      "key": "timezone",
+      "label": "Session timezone",
+      "description": "Set the MySQL session time zone, such as Europe/Berlin or +02:00. Leave empty to use the database default.",
+      "valueType": "string",
+      "target": "jsonData",
+      "ui": {
+        "component": "input",
+        "placeholder": "Europe/Berlin or +02:00"
+      }
+    },
+    {
+      "id": "jsonData_maxIdleConnsAuto",
+      "key": "maxIdleConnsAuto",
+      "label": "Auto max idle",
+      "description": "In the editor, copy a changed positive Max open value to Max idle. When this switch is omitted, the editor enables it only if Max open and Max idle are both unset. Provisioning uses the stored maxIdleConns value.",
+      "valueType": "boolean",
+      "target": "jsonData",
+      "ui": {
+        "component": "switch"
+      }
+    },
+    {
+      "id": "sqleng_settings.maxIdleConns",
+      "key": "maxIdleConns",
+      "label": "Max idle",
+      "description": "Maximum idle connections, in whole numbers. A nonpositive value keeps none. The pool caps this at a positive Max open limit. Defaults to the Grafana SQL idle limit.",
+      "valueType": "number",
+      "target": "jsonData",
+      "ui": {
+        "component": "input"
+      },
+      "disabledWhen": "jsonData_maxIdleConnsAuto == true"
+    },
+    {
+      "id": "jsonData_serverName",
+      "key": "serverName",
+      "label": "TLS server name",
+      "description": "Override the server name used for TLS verification when a CA or client certificate is supplied. Provisioning only.",
+      "valueType": "string",
+      "target": "jsonData",
+      "ui": {
+        "component": "input"
+      },
+      "dependsOn": "false"
+    },
+    {
+      "id": "sqleng_settings.secureSocksProxyUsername",
+      "key": "secureSocksProxyUsername",
+      "label": "Secure Socks Proxy username",
+      "description": "SOCKS proxy username. Defaults to the data source UID. Provisioning only.",
+      "valueType": "string",
+      "target": "jsonData",
+      "dependsOn": "false",
+      "ui": {
+        "component": "input"
+      }
+    },
+    {
+      "id": "secureJsonData_secureSocksProxyPassword",
+      "key": "secureSocksProxyPassword",
+      "label": "Proxy password",
+      "description": "Password for the SOCKS proxy. Provisioning only.",
+      "valueType": "string",
+      "target": "secureJsonData",
+      "ui": {
+        "component": "input"
+      },
+      "dependsOn": "false"
+    },
+    {
+      "id": "jsonData_timeout",
+      "key": "timeout",
+      "label": "Proxy timeout",
+      "description": "Time in seconds to establish the SOCKS proxy connection. The SDK uses whole seconds. Provisioning only.",
+      "valueType": "number",
+      "target": "jsonData",
+      "ui": {
+        "component": "input"
+      },
+      "defaultValue": 30,
+      "dependsOn": "false"
+    },
+    {
+      "id": "jsonData_keepAlive",
+      "key": "keepAlive",
+      "label": "Proxy keep-alive",
+      "description": "TCP keep-alive interval for the SOCKS proxy connection, in seconds. The SDK uses whole seconds. Provisioning only.",
+      "valueType": "number",
+      "target": "jsonData",
+      "ui": {
+        "component": "input"
+      },
+      "defaultValue": 30,
+      "dependsOn": "false"
+    }
+  ],
+  "groups": [
+    {
+      "id": "connection",
+      "title": "Connection",
+      "order": 1,
+      "fieldRefs": [
+        "sqleng_settings.url",
+        "sqleng_settings.database"
+      ]
+    },
+    {
+      "id": "authentication",
+      "title": "Authentication",
+      "order": 2,
+      "fieldRefs": [
+        "sqleng_settings.user",
+        "sqleng_settings.password",
+        "jsonData_tlsAuth",
+        "jsonData_tlsAuthWithCACert",
+        "sqleng_settings.tlsSkipVerify",
+        "jsonData_allowCleartextPasswords"
+      ]
+    },
+    {
+      "id": "tls-details",
+      "title": "TLS/SSL Auth Details",
+      "order": 3,
+      "optional": true,
+      "fieldRefs": [
+        "sqleng_settings.tlsClientCert",
+        "sqleng_settings.tlsCACert",
+        "sqleng_settings.tlsClientKey"
+      ]
+    },
+    {
+      "id": "additional-settings",
+      "title": "Additional settings",
+      "order": 4,
+      "optional": true,
+      "fieldRefs": [
+        "jsonData_timezone",
+        "sqleng_settings.timeInterval",
+        "sqleng_settings.maxOpenConns",
+        "jsonData_maxIdleConnsAuto",
+        "sqleng_settings.maxIdleConns",
+        "sqleng_settings.connMaxLifetime",
+        "sqleng_settings.enableSecureSocksProxy"
+      ]
+    }
+  ],
+  "instructions": [
+    {
+      "msg": "For mutual TLS, set tlsAuth and supply both tlsClientCert and tlsClientKey. For server verification with a private CA, set tlsAuthWithCACert and supply tlsCACert. You can combine both modes. Store the switches in jsonData and all PEM content in secureJsonData.",
+      "tags": [
+        "llm",
+        "auth"
+      ]
+    }
+  ]
+}
