@@ -1,0 +1,338 @@
+{
+  "targetApiVersion": "v0alpha1",
+  "settings": {
+    "spec": {
+      "type": "object",
+      "required": [
+        "url",
+        "user"
+      ],
+      "properties": {
+        "jsonData": {
+          "type": "object",
+          "properties": {
+            "allowCleartextPasswords": {
+              "description": "Allow a MySQL account to authenticate using the cleartext password plugin.",
+              "type": "boolean",
+              "default": false
+            },
+            "connMaxLifetime": {
+              "description": "Maximum connection lifetime in whole seconds. A nonpositive value disables expiry. Defaults to the Grafana SQL connection lifetime.",
+              "type": "number"
+            },
+            "database": {
+              "description": "Default database for queries. If empty, the backend falls back to the legacy root database field.",
+              "type": "string"
+            },
+            "enableSecureSocksProxy": {
+              "description": "Connect through the secure SOCKS proxy configured in Grafana. Use a TCP host and port.",
+              "type": "boolean",
+              "default": false
+            },
+            "keepAlive": {
+              "description": "TCP keep-alive interval for the SOCKS proxy connection, in seconds. The SDK uses whole seconds. Provisioning only.",
+              "type": "number",
+              "default": 30,
+              "x-dsconfig-depends-on": "false"
+            },
+            "maxIdleConns": {
+              "description": "Maximum idle connections, in whole numbers. A nonpositive value keeps none. The pool caps this at a positive Max open limit. Defaults to the Grafana SQL idle limit.",
+              "type": "number",
+              "x-dsconfig-disabled-when": "jsonData_maxIdleConnsAuto == true"
+            },
+            "maxIdleConnsAuto": {
+              "description": "In the editor, copy a changed positive Max open value to Max idle. When this switch is omitted, the editor enables it only if Max open and Max idle are both unset. Provisioning uses the stored maxIdleConns value.",
+              "type": "boolean"
+            },
+            "maxOpenConns": {
+              "description": "Maximum number of open database connections, in whole numbers. A nonpositive value means unlimited. Defaults to the Grafana SQL connection limit.",
+              "type": "number"
+            },
+            "secureSocksProxyUsername": {
+              "description": "SOCKS proxy username. Defaults to the data source UID. Provisioning only.",
+              "type": "string",
+              "x-dsconfig-depends-on": "false"
+            },
+            "serverName": {
+              "description": "Override the server name used for TLS verification when a CA or client certificate is supplied. Provisioning only.",
+              "type": "string",
+              "x-dsconfig-depends-on": "false"
+            },
+            "timeInterval": {
+              "description": "Lower limit for the automatic query interval, for example 1m for data written every minute.",
+              "type": "string",
+              "default": "1m"
+            },
+            "timeout": {
+              "description": "Time in seconds to establish the SOCKS proxy connection. The SDK uses whole seconds. Provisioning only.",
+              "type": "number",
+              "default": 30,
+              "x-dsconfig-depends-on": "false"
+            },
+            "timezone": {
+              "description": "Set the MySQL session time zone, such as Europe/Berlin or +02:00. Leave empty to use the database default.",
+              "type": "string"
+            },
+            "tlsAuth": {
+              "description": "Present a client certificate and matching private key to MySQL for mutual TLS.",
+              "type": "boolean",
+              "default": false
+            },
+            "tlsAuthWithCACert": {
+              "description": "Verify the MySQL server certificate against a supplied CA certificate.",
+              "type": "boolean",
+              "default": false
+            },
+            "tlsSkipVerify": {
+              "description": "Use TLS without verifying the MySQL server certificate or host name.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "url": {
+          "description": "MySQL host with an optional TCP port (default 3306), or an absolute path to a local Unix socket. With Private Data Source Connect, use a host and explicit port.",
+          "type": "string"
+        },
+        "user": {
+          "description": "MySQL account used to run queries.",
+          "type": "string"
+        }
+      }
+    },
+    "secureValues": [
+      {
+        "key": "password",
+        "description": "Password for the MySQL account. Omit it when the account authenticates without a password."
+      },
+      {
+        "key": "tlsClientCert",
+        "description": "PEM client certificate paired with the TLS client key."
+      },
+      {
+        "key": "tlsCACert",
+        "description": "PEM CA certificate used to verify the MySQL server."
+      },
+      {
+        "key": "tlsClientKey",
+        "description": "PEM private key paired with the TLS client certificate."
+      },
+      {
+        "key": "secureSocksProxyPassword",
+        "description": "Password for the SOCKS proxy. Provisioning only."
+      }
+    ]
+  },
+  "settingsExamples": {
+    "examples": {
+      "": {
+        "summary": "MySQL over TCP",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana"
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "cleartextAuth": {
+        "summary": "Cleartext password authentication over verified TLS",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            },
+            "tlsCACert": {
+              "create": "${GRAFANA_TLS_CA_CERT}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "allowCleartextPasswords": true,
+              "database": "grafana",
+              "tlsAuthWithCACert": true
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "clientTLS": {
+        "summary": "Mutual TLS with system trust roots",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            },
+            "tlsClientCert": {
+              "create": "${GRAFANA_TLS_CLIENT_CERT}"
+            },
+            "tlsClientKey": {
+              "create": "${GRAFANA_TLS_CLIENT_KEY}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana",
+              "tlsAuth": true
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "clientTLSWithCA": {
+        "summary": "Mutual TLS with a private CA",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            },
+            "tlsCACert": {
+              "create": "${GRAFANA_TLS_CA_CERT}"
+            },
+            "tlsClientCert": {
+              "create": "${GRAFANA_TLS_CLIENT_CERT}"
+            },
+            "tlsClientKey": {
+              "create": "${GRAFANA_TLS_CLIENT_KEY}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana",
+              "tlsAuth": true,
+              "tlsAuthWithCACert": true
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "privateCA": {
+        "summary": "Verify the server with a private CA",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            },
+            "tlsCACert": {
+              "create": "${GRAFANA_TLS_CA_CERT}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana",
+              "tlsAuthWithCACert": true
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "privateNetwork": {
+        "summary": "TCP through Private Data Source Connect",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana",
+              "enableSecureSocksProxy": true
+            },
+            "title": "MySQL",
+            "url": "mysql.internal:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "skipVerify": {
+        "summary": "TLS without server certificate verification",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "secure": {
+            "password": {
+              "create": "${GRAFANA_MYSQL_PASSWORD}"
+            }
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana",
+              "tlsSkipVerify": true
+            },
+            "title": "MySQL",
+            "url": "localhost:3306",
+            "user": "grafana"
+          }
+        }
+      },
+      "unixSocket": {
+        "summary": "Passwordless local account over a Unix socket",
+        "value": {
+          "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+          "kind": "DataSource",
+          "metadata": {
+            "name": "mysql"
+          },
+          "spec": {
+            "jsonData": {
+              "database": "grafana"
+            },
+            "title": "MySQL",
+            "url": "/var/run/mysqld/mysqld.sock",
+            "user": "grafana"
+          }
+        }
+      }
+    }
+  }
+}

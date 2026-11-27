@@ -1,0 +1,212 @@
+{
+  "examples": {
+    "": {
+      "summary": "MySQL over TCP",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana"
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "cleartextAuth": {
+      "summary": "Cleartext password authentication over verified TLS",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          },
+          "tlsCACert": {
+            "create": "${GRAFANA_TLS_CA_CERT}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "allowCleartextPasswords": true,
+            "database": "grafana",
+            "tlsAuthWithCACert": true
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "clientTLS": {
+      "summary": "Mutual TLS with system trust roots",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          },
+          "tlsClientCert": {
+            "create": "${GRAFANA_TLS_CLIENT_CERT}"
+          },
+          "tlsClientKey": {
+            "create": "${GRAFANA_TLS_CLIENT_KEY}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana",
+            "tlsAuth": true
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "clientTLSWithCA": {
+      "summary": "Mutual TLS with a private CA",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          },
+          "tlsCACert": {
+            "create": "${GRAFANA_TLS_CA_CERT}"
+          },
+          "tlsClientCert": {
+            "create": "${GRAFANA_TLS_CLIENT_CERT}"
+          },
+          "tlsClientKey": {
+            "create": "${GRAFANA_TLS_CLIENT_KEY}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana",
+            "tlsAuth": true,
+            "tlsAuthWithCACert": true
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "privateCA": {
+      "summary": "Verify the server with a private CA",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          },
+          "tlsCACert": {
+            "create": "${GRAFANA_TLS_CA_CERT}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana",
+            "tlsAuthWithCACert": true
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "privateNetwork": {
+      "summary": "TCP through Private Data Source Connect",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana",
+            "enableSecureSocksProxy": true
+          },
+          "title": "MySQL",
+          "url": "mysql.internal:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "skipVerify": {
+      "summary": "TLS without server certificate verification",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "secure": {
+          "password": {
+            "create": "${GRAFANA_MYSQL_PASSWORD}"
+          }
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana",
+            "tlsSkipVerify": true
+          },
+          "title": "MySQL",
+          "url": "localhost:3306",
+          "user": "grafana"
+        }
+      }
+    },
+    "unixSocket": {
+      "summary": "Passwordless local account over a Unix socket",
+      "value": {
+        "apiVersion": "mysql.datasource.grafana.app/v0alpha1",
+        "kind": "DataSource",
+        "metadata": {
+          "name": "mysql"
+        },
+        "spec": {
+          "jsonData": {
+            "database": "grafana"
+          },
+          "title": "MySQL",
+          "url": "/var/run/mysqld/mysqld.sock",
+          "user": "grafana"
+        }
+      }
+    }
+  }
+}
