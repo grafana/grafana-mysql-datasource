@@ -1,5 +1,10 @@
 # Changelog
 
+## 13.1.8
+
+- Fix security vulnerabilities in golang.org/x/net, moment, ip-address, fast-uri and glob
+- Chore: Update backend and frontend dependencies
+
 ## 13.1.7
 
 - Fix proxy identifier across private networks
